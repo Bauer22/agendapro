@@ -9,6 +9,7 @@ import type { UserProfile } from '@/types'
 interface Props { profile: UserProfile|null; can:(p:string)=>boolean }
 export default function EPIPage({ profile, can }: Props) {
   const [items, setItems] = useState<any[]>([])
+  const [saving, setSaving] = useState(false)
   const [deliveries, setDeliveries] = useState<any[]>([])
   const [users, setUsers] = useState<any[]>([])
   const [tab, setTab] = useState<'stock'|'deliveries'>('stock')
@@ -41,19 +42,23 @@ export default function EPIPage({ profile, can }: Props) {
   }
 
   async function save() {
+    if (saving) return
+    setSaving(true)
     if (tab==='stock') {
-      if (!editing.name) { toast.error('Informe o nome do EPI'); return }
+      if (!editing.name) { toast.error('Informe o nome do EPI'); setSaving(false); return }
       const obj = { name:editing.name, category:editing.category||'EPI', ca_number:editing.ca_number, stock:parseFloat(editing.stock)||0, min_stock:parseFloat(editing.min_stock)||0, unit:editing.unit||'un', validity_months:parseInt(editing.validity_months)||0, description:editing.description }
       const { error } = editing.id ? await supabase.from('epi_items').update(obj).eq('id',editing.id) : await supabase.from('epi_items').insert(obj)
-      if (error) { toast.error(error.message); return }
+      if (error) { toast.error(error.message); setSaving(false); return }
+      setSaving(false)
       toast.success('EPI salvo ✅')
     } else {
-      if (!editing.epi_id||!editing.user_id) { toast.error('Selecione EPI e funcionário'); return }
+      if (!editing.epi_id||!editing.user_id) { toast.error('Selecione EPI e funcionário'); setSaving(false); return }
       const epi = items.find(i=>i.id===editing.epi_id)
       const obj = { epi_id:editing.epi_id, epi_name:epi?.name||'', user_id:editing.user_id, user_name:users.find(u=>u.id===editing.user_id)?.display_name||'', delivery_date:editing.delivery_date||td(), quantity:parseFloat(editing.quantity)||1, validity_date:editing.validity_date||null, notes:editing.notes, delivered_by:profile?.display_name }
       const { error } = await supabase.from('epi_deliveries').insert(obj)
-      if (error) { toast.error(error.message); return }
+      if (error) { toast.error(error.message); setSaving(false); return }
       if (epi) await supabase.from('epi_items').update({ stock: Math.max(0,(epi.stock||0)-(parseFloat(editing.quantity)||1)) }).eq('id',epi.id)
+      setSaving(false)
       toast.success('Entrega registrada ✅')
     }
     setModal(false); load()
@@ -120,7 +125,7 @@ export default function EPIPage({ profile, can }: Props) {
       )}
 
       <Modal open={modal} onClose={()=>setModal(false)} title={tab==='stock'?(editing.id?'Editar EPI':'Novo EPI'):'Registrar Entrega'}
-        footer={<><Btn onClick={()=>setModal(false)}>Cancelar</Btn><Btn onClick={save} variant="primary" size="md">Salvar</Btn></>}>
+        footer={<><Btn onClick={()=>setModal(false)}>Cancelar</Btn><Btn onClick={save} variant="primary" size="md" disabled={saving}>{saving ? "Salvando..." : "Salvar"}</Btn></>}>
         {tab==='stock' ? <>
           <Input label="Nome do EPI *" value={editing.name} onChange={(v:string)=>setEditing((e:any)=>({...e,name:v}))} placeholder="Ex: Capacete de segurança" />
           <div className="grid grid-cols-2 gap-x-3">

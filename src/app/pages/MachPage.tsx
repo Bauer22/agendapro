@@ -15,6 +15,7 @@ const TABS = [{k:'info',l:'Dados'},{k:'comp',l:'Componentes'},{k:'pm',l:'Plano M
 
 export default function MachPage({ profile, can }: Props) {
   const [machines, setMachines] = useState<Machine[]>([])
+  const [saving, setSaving] = useState(false)
   const [loading, setLoading]   = useState(true)
   const [modal, setModal]       = useState(false)
   const [tab, setTab]           = useState('info')
@@ -60,15 +61,19 @@ export default function MachPage({ profile, can }: Props) {
   }
 
   async function save() {
-    if (!editing.name) { toast.error('Informe o nome da máquina'); return }
+    if (saving) return
+    setSaving(true)
+    if (!editing.name) { toast.error('Informe o nome da máquina'); setSaving(false); return }
     try {
       if (editing.id) {
         const { error } = await supabase.from('machines').update(editing).eq('id', editing.id)
         if (error) throw error
+        setSaving(false)
         toast.success('Máquina atualizada ✅')
       } else {
         const { error } = await supabase.from('machines').insert({ ...editing, created_at: new Date().toISOString() })
         if (error) throw error
+        setSaving(false)
         toast.success('Máquina cadastrada ✅')
       }
       setModal(false); load()
@@ -161,7 +166,7 @@ export default function MachPage({ profile, can }: Props) {
 
       {/* Modal */}
       <Modal open={modal} onClose={()=>setModal(false)} title={editing.id?'Editar Máquina':'Cadastrar Máquina'}
-        footer={<><Btn onClick={()=>setModal(false)} variant="secondary" size="md">Cancelar</Btn><Btn onClick={save} variant="primary" size="md">Salvar</Btn></>}>
+        footer={<><Btn onClick={()=>setModal(false)} variant="secondary" size="md">Cancelar</Btn><Btn onClick={save} variant="primary" size="md" disabled={saving}>{saving ? "Salvando..." : "Salvar"}</Btn></>}>
         {/* Tabs */}
         <div className="flex gap-1 overflow-x-auto pb-1 mb-3" style={{scrollbarWidth:'none'}}>
           {TABS.filter(t => t.k!=='hours'||!!editing.id).map(t => (

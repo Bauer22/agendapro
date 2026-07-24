@@ -27,7 +27,7 @@ export default function SalesPage({ profile, can }: Props) {
   const [editing, setEditing]   = useState<any>({})
   const [newClient, setNewClient] = useState<any>({})
   const [newProduct, setNewProduct] = useState<any>({})
-  const [tab, setTab]           = useState<'open'|'all'|'relatorio'|'extrato'>('open')
+  const [tab, setTab]           = useState<'open'|'all'|'relatorio'|'extrato'|'autoriz'>('open')
   const [saldos, setSaldos]     = useState<any[]>([])
   const [extrato, setExtrato]   = useState<any[]>([])
   const [lancs, setLancs]       = useState<any[]>([])
@@ -40,6 +40,155 @@ export default function SalesPage({ profile, can }: Props) {
   const [loading, setLoading]   = useState(true)
   const [saving, setSaving]     = useState(false)
   const { confirm, dialog }     = useConfirm()
+
+  // ── Autorização de Carregamento ──
+  const [autorizacoes, setAutorizacoes] = useState<any[]>([])
+  const [autModal, setAutModal]         = useState(false)
+  const [newAut, setNewAut]             = useState<any>({})
+
+  async function loadAutorizacoes() {
+    const { data } = await supabase.from('loading_authorizations')
+      .select('*').order('auth_date', { ascending: false }).order('created_at', { ascending: false }).limit(200)
+    setAutorizacoes(data || [])
+  }
+
+  async function saveAutorizacao() {
+    if (saving) return
+    if (!newAut.client_name) { toast.error('Selecione o cliente'); return }
+    if (!newAut.product_name) { toast.error('Selecione o produto'); return }
+    if (!newAut.auth_date) { toast.error('Informe a data do carregamento'); return }
+    setSaving(true)
+
+    const { error } = await supabase.from('loading_authorizations').insert({
+      auth_date: newAut.auth_date,
+      auth_time: newAut.auth_time || null,
+      client_name: newAut.client_name,
+      client_id: newAut.client_id || null,
+      product_name: newAut.product_name,
+      product_id: newAut.product_id || null,
+      quantity: newAut.quantity ? parseFloat(newAut.quantity) : null,
+      unit: newAut.unit || 'ton',
+      driver_name: newAut.driver_name || null,
+      driver_id: newAut.driver_id || null,
+      plate: newAut.plate || null,
+      operator_name: newAut.operator_name || null,
+      released_by: profile?.display_name || 'SISTEMA',
+      notes: newAut.notes || null,
+      created_by: profile?.display_name || '',
+      company_id: profile?.company_id || null,
+    })
+    setSaving(false)
+    if (error) { toast.error('Erro: ' + error.message); return }
+    toast.success('Autorização criada ✅')
+    setAutModal(false); setNewAut({}); loadAutorizacoes()
+  }
+
+  async function deleteAutorizacao(id: string) {
+    const ok = await confirm('Excluir esta autorização de carregamento?')
+    if (!ok) return
+    const { error } = await supabase.from('loading_authorizations').delete().eq('id', id)
+    if (error) { toast.error('Erro ao excluir: ' + error.message); return }
+    toast.success('Autorização excluída ✅')
+    loadAutorizacoes()
+  }
+
+  function imprimirAutorizacao(a: any) {
+    const w = window.open('', '_blank')
+    if (!w) { toast.error('Permita pop-ups para imprimir'); return }
+    const fmtQtd = a.quantity ? `${(+a.quantity).toLocaleString('pt-BR',{minimumFractionDigits:2})} ${a.unit === 'm3' ? 'm³' : 't'}` : '_______________'
+    w.document.write(`
+<!DOCTYPE html><html><head><meta charset="utf-8"><title>Autorização de Carregamento Nº ${a.numero || ''}</title>
+<style>
+  @page { size: A4; margin: 18mm; }
+  * { box-sizing: border-box; }
+  body { font-family: Arial, Helvetica, sans-serif; color:#000; margin:0; }
+  h1 { font-size: 19px; text-align:center; margin:0 0 4px; letter-spacing:.5px; }
+  .sub { text-align:center; font-size:12px; color:#444; margin-bottom:18px; }
+  .num { text-align:center; font-size:13px; font-weight:bold; margin-bottom:20px; }
+  table { width:100%; border-collapse: collapse; margin-bottom: 26px; }
+  td { border:1px solid #333; padding:9px 10px; font-size:13px; }
+  td.lbl { background:#f0f0f0; font-weight:bold; width:32%; }
+  .assinaturas { margin-top: 48px; }
+  .linha-ass { margin-bottom: 42px; }
+  .linha { border-bottom:1px solid #000; height:34px; }
+  .nome { font-size:12px; margin-top:4px; }
+  .obs { font-size:11px; color:#555; margin-top:24px; border-top:1px dashed #999; padding-top:8px; }
+</style></head><body>
+  <h1>AUTORIZAÇÃO DE CARREGAMENTO</h1>
+  <div class="sub">Documento de liberação para saída de produto</div>
+  <div class="num">Nº ${a.numero || '—'}</div>
+
+  <table>
+    <tr><td class="lbl">DATA DO CARREGAMENTO</td><td>${a.auth_date ? new Date(a.auth_date+'T00:00:00').toLocaleDateString('pt-BR') : '—'}</td></tr>
+    <tr><td class="lbl">HORA PREVISTA</td><td>${a.auth_time || '—'}</td></tr>
+    <tr><td class="lbl">CLIENTE</td><td>${a.client_name || '—'}</td></tr>
+    <tr><td class="lbl">PRODUTO A SER CARREGADO</td><td>${a.product_name || '—'}</td></tr>
+    <tr><td class="lbl">QUANTIDADE</td><td>${fmtQtd}</td></tr>
+    <tr><td class="lbl">MOTORISTA</td><td>${a.driver_name || '—'}</td></tr>
+    <tr><td class="lbl">PLACA</td><td>${a.plate || '—'}</td></tr>
+    ${a.notes ? `<tr><td class="lbl">OBSERVAÇÕES</td><td>${a.notes}</td></tr>` : ''}
+  </table>
+
+  <div class="assinaturas">
+    <div class="linha-ass">
+      <div class="linha"></div>
+      <div class="nome"><b>MOTORISTA:</b> ${a.driver_name || '_________________________'}</div>
+    </div>
+    <div class="linha-ass">
+      <div class="linha"></div>
+      <div class="nome"><b>OPERADOR:</b> ${a.operator_name || '_________________________'}</div>
+    </div>
+    <div class="linha-ass">
+      <div class="linha"></div>
+      <div class="nome"><b>RESPONSÁVEL PELA LIBERAÇÃO:</b> ${a.released_by || '_________________________'}</div>
+    </div>
+  </div>
+
+  <div class="obs">Emitido em ${new Date(a.created_at || Date.now()).toLocaleString('pt-BR')} por ${a.created_by || a.released_by || '—'}</div>
+  <script>window.onload = function(){ window.print(); }</script>
+</body></html>`)
+    w.document.close()
+  }
+
+  function imprimirExtrato() {
+    const w = window.open('', '_blank')
+    if (!w) { toast.error('Permita pop-ups para imprimir'); return }
+    const linhas = saldos.map((s:any) => {
+      const L = lancs.filter((l:any) => l.parceiro === s.parceiro)
+      const detalhe = L.map((l:any) => `
+        <tr>
+          <td>${l.data ? new Date(l.data+'T00:00:00').toLocaleDateString('pt-BR') : '—'}</td>
+          <td>${l.tipo || '—'}</td>
+          <td>${l.descricao || '—'}</td>
+          <td style="text-align:right">${+l.credito !== 0 ? (+l.credito).toLocaleString('pt-BR',{minimumFractionDigits:2}) : '—'}</td>
+          <td style="text-align:right">${+l.debito !== 0 ? (+l.debito).toLocaleString('pt-BR',{minimumFractionDigits:2}) : '—'}</td>
+        </tr>`).join('')
+      return `
+        <h2>${s.parceiro} — SALDO: R$ ${(+s.saldo_final).toLocaleString('pt-BR',{minimumFractionDigits:2})} (${s.situacao})</h2>
+        <table>
+          <thead><tr><th>Data</th><th>Tipo</th><th>Descrição</th><th style="text-align:right">Crédito</th><th style="text-align:right">Débito</th></tr></thead>
+          <tbody>${detalhe || '<tr><td colspan="5">Sem lançamentos</td></tr>'}</tbody>
+        </table>`
+    }).join('')
+    w.document.write(`
+<!DOCTYPE html><html><head><meta charset="utf-8"><title>Extrato de Conta Corrente</title>
+<style>
+  @page { size: A4; margin: 14mm; }
+  body { font-family: Arial, sans-serif; color:#000; font-size:11px; }
+  h1 { font-size:17px; text-align:center; margin-bottom:4px; }
+  .sub { text-align:center; font-size:11px; color:#555; margin-bottom:18px; }
+  h2 { font-size:12px; background:#eee; padding:6px 8px; margin:16px 0 6px; border-left:4px solid #f97316; }
+  table { width:100%; border-collapse:collapse; margin-bottom:10px; }
+  th, td { border:1px solid #999; padding:4px 6px; font-size:10px; }
+  th { background:#f5f5f5; }
+</style></head><body>
+  <h1>EXTRATO DE CONTA CORRENTE</h1>
+  <div class="sub">Emitido em ${new Date().toLocaleString('pt-BR')}</div>
+  ${linhas || '<p>Sem dados.</p>'}
+  <script>window.onload = function(){ window.print(); }</script>
+</body></html>`)
+    w.document.close()
+  }
 
   useEffect(() => { loadMeta(); loadExtrato() }, [])
 
@@ -314,13 +463,13 @@ export default function SalesPage({ profile, can }: Props) {
       </div>
 
       <div className="flex gap-2 mb-3">
-        {(['open','all','relatorio','extrato'] as const).map(t => (
-          <div key={t} onClick={() => { setTab(t); if(t!=='relatorio' && t!=='extrato') setLoading(true) }}
-            style={{ flex:1, textAlign:'center', padding:'7px', borderRadius:'10px', fontSize:'11px', fontWeight:700, cursor:'pointer',
+        {(['open','all','relatorio','extrato','autoriz'] as const).map(t => (
+          <div key={t} onClick={() => { setTab(t); if(t!=='relatorio' && t!=='extrato' && t!=='autoriz') setLoading(true); if(t==='autoriz') loadAutorizacoes() }}
+            style={{ flex:1, textAlign:'center', padding:'7px', borderRadius:'10px', fontSize:'10px', fontWeight:700, cursor:'pointer',
               background: tab===t ? 'rgba(249,115,22,.12)' : 'var(--s1)',
               border: `1px solid ${tab===t ? 'rgba(249,115,22,.4)' : 'var(--bd)'}`,
               color: tab===t ? '#f97316' : 'var(--t2)' }}>
-            {t === 'open' ? '📋 Ativos' : t === 'all' ? '📦 Todos' : t === 'relatorio' ? '📊 Relatório' : '🤝 Extrato'}
+            {t === 'open' ? '📋 Ativos' : t === 'all' ? '📦 Todos' : t === 'relatorio' ? '📊 Relatório' : t === 'extrato' ? '🤝 Extrato' : '📝 Autorização'}
           </div>
         ))}
       </div>
@@ -329,7 +478,10 @@ export default function SalesPage({ profile, can }: Props) {
         <>
           <div className="flex justify-between items-center mb-3">
             <span style={{fontSize:'9px',color:'var(--t3)'}}>Vendas − recebido − compras + pago = saldo</span>
-            <Btn onClick={()=>{setNewPay({payment_date:td()});setPayTipo('receber');setPayModal(true)}} variant="primary" size="sm">+ Lançar</Btn>
+            <div className="flex gap-1">
+              <Btn onClick={imprimirExtrato} variant="secondary" size="sm">🖨️ Imprimir</Btn>
+              <Btn onClick={()=>{setNewPay({payment_date:td()});setPayTipo('receber');setPayModal(true)}} variant="primary" size="sm">+ Lançar</Btn>
+            </div>
           </div>
 
           {saldos.length === 0 ? <Empty icon="🤝" text="Sem movimentação. Execute o SQL da conta corrente." /> : (
@@ -538,6 +690,94 @@ export default function SalesPage({ profile, can }: Props) {
               options={[{value:'',label:'—'},{value:'PIX',label:'PIX'},{value:'Transferência',label:'Transferência'},{value:'Boleto',label:'Boleto'},{value:'Dinheiro',label:'Dinheiro'},{value:'Cheque',label:'Cheque'},{value:'Compensação',label:'Compensação (troca)'}]} />
             <Input label="NF / documento de referência" value={newPay.invoice_ref} onChange={(v:string)=>setNewPay((e:any)=>({...e,invoice_ref:v}))} placeholder="Opcional" />
             <Textarea label="Observações" value={newPay.notes} onChange={(v:string)=>setNewPay((e:any)=>({...e,notes:v}))} rows={2} placeholder="Opcional..." />
+          </Modal>
+        </>
+      )}
+
+      {tab === 'autoriz' && (
+        <>
+          <div className="flex justify-between items-center mb-3">
+            <span style={{fontSize:'9px',color:'var(--t3)'}}>Documento de liberação para saída de produto</span>
+            <Btn onClick={()=>{setNewAut({auth_date:td(), unit:'ton'});setAutModal(true)}} variant="primary" size="sm">+ Nova Autorização</Btn>
+          </div>
+
+          {autorizacoes.length === 0 ? <Empty icon="📝" text="Nenhuma autorização emitida." /> : (
+            <div className="flex flex-col gap-2">
+              {autorizacoes.map((a:any) => (
+                <div key={a.id} className="rounded-xl p-3" style={{background:'var(--s1)',border:'1px solid var(--bd)'}}>
+                  <div className="flex justify-between items-start mb-2">
+                    <div>
+                      <span style={{fontSize:'13px',fontWeight:800}}>Nº {a.numero}</span>
+                      <span style={{fontSize:'10px',color:'var(--t3)'}}> · {fmtD(a.auth_date)}{a.auth_time?` · ${a.auth_time}`:''}</span>
+                    </div>
+                    <div className="flex gap-1">
+                      <span onClick={()=>imprimirAutorizacao(a)} style={{cursor:'pointer',fontSize:'15px'}} title="Imprimir">🖨️</span>
+                      <span onClick={()=>deleteAutorizacao(a.id)} style={{cursor:'pointer',fontSize:'14px',color:'var(--rd)'}} title="Excluir">🗑️</span>
+                    </div>
+                  </div>
+                  <div style={{fontSize:'11px'}}>
+                    <div><b>Cliente:</b> {a.client_name}</div>
+                    <div><b>Produto:</b> {a.product_name}{a.quantity?` · ${(+a.quantity).toLocaleString('pt-BR',{minimumFractionDigits:2})} ${a.unit==='m3'?'m³':'t'}`:''}</div>
+                    {a.driver_name && <div><b>Motorista:</b> {a.driver_name}{a.plate?` · ${a.plate}`:''}</div>}
+                    {a.operator_name && <div><b>Operador:</b> {a.operator_name}</div>}
+                    <div style={{color:'var(--t3)',fontSize:'9px',marginTop:'3px'}}>Liberado por {a.released_by}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Modal de nova autorização */}
+          <Modal open={autModal} onClose={()=>setAutModal(false)} title="📝 Nova Autorização de Carregamento"
+            footer={<><Btn onClick={()=>setAutModal(false)}>Cancelar</Btn><Btn onClick={saveAutorizacao} variant="primary" size="md" disabled={saving}>{saving?'Salvando...':'Salvar'}</Btn></>}>
+
+            <div className="grid grid-cols-2 gap-x-3">
+              <Input label="Data do carregamento *" value={newAut.auth_date} onChange={(v:string)=>setNewAut((e:any)=>({...e,auth_date:v}))} type="date" />
+              <Input label="Hora prevista" value={newAut.auth_time} onChange={(v:string)=>setNewAut((e:any)=>({...e,auth_time:v}))} type="time" />
+            </div>
+
+            <SelectComCadastro label="Cliente *" tipo="cliente" value={newAut.client_id||''}
+              onChange={(v:string)=>{
+                const c = clients.find((x:any)=>x.id===v)
+                setNewAut((e:any)=>({...e, client_id:v, client_name:c?.name||''}))
+              }}
+              options={clients.map((c:any)=>({value:c.id,label:c.name}))}
+              companyId={profile?.company_id} createdBy={profile?.display_name} onCreatedRefresh={()=>loadMeta()} />
+
+            <SelectComCadastro label="Produto *" tipo="produto" value={newAut.product_id||''}
+              onChange={(v:string)=>{
+                const p = products.find((x:any)=>x.id===v)
+                setNewAut((e:any)=>({...e, product_id:v, product_name:p?.name||''}))
+              }}
+              options={products.map((p:any)=>({value:p.id,label:p.name}))}
+              companyId={profile?.company_id} createdBy={profile?.display_name} onCreatedRefresh={()=>loadMeta()} />
+
+            <div className="grid grid-cols-2 gap-x-3">
+              <Input label="Quantidade" value={newAut.quantity} onChange={(v:string)=>setNewAut((e:any)=>({...e,quantity:v}))} type="number" placeholder="0.00" />
+              <Select label="Unidade" value={newAut.unit||'ton'} onChange={(v:string)=>setNewAut((e:any)=>({...e,unit:v}))}
+                options={[{value:'ton',label:'Toneladas'},{value:'m3',label:'Metros cúbicos'}]} />
+            </div>
+
+            {motoristas.length > 0 ? (
+              <SelectComCadastro label="Motorista" tipo="motorista" value={newAut.driver_id||''}
+                onChange={(v:string)=>{
+                  const m = motoristas.find((x:any)=>x.id===v)
+                  setNewAut((e:any)=>({...e, driver_id:v, driver_name:m?.name||''}))
+                }}
+                options={motoristas.map((m:any)=>({value:m.id,label:m.name}))}
+                companyId={profile?.company_id} createdBy={profile?.display_name} onCreatedRefresh={()=>loadMeta()} />
+            ) : (
+              <Input label="Motorista" value={newAut.driver_name} onChange={(v:string)=>setNewAut((e:any)=>({...e,driver_name:v}))} placeholder="Nome do motorista" />
+            )}
+
+            <Input label="Placa" value={newAut.plate} onChange={(v:string)=>setNewAut((e:any)=>({...e,plate:v.toUpperCase()}))} placeholder="AAA0A00" />
+            <Input label="Operador" value={newAut.operator_name} onChange={(v:string)=>setNewAut((e:any)=>({...e,operator_name:v}))} placeholder="Nome do operador que vai carregar" />
+
+            <div style={{fontSize:'10px',color:'var(--t3)',padding:'8px',background:'var(--s2)',borderRadius:'8px',marginBottom:'8px'}}>
+              🔒 <b>Responsável pela liberação:</b> {profile?.display_name || 'Usuário atual'} (preenchido automaticamente)
+            </div>
+
+            <Textarea label="Observações" value={newAut.notes} onChange={(v:string)=>setNewAut((e:any)=>({...e,notes:v}))} rows={2} placeholder="Opcional..." />
           </Modal>
         </>
       )}

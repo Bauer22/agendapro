@@ -22,6 +22,7 @@ const CAT_ICONS: Record<string,string> = {
 
 export default function PartsPage({ profile, can }: Props) {
   const [parts, setParts]     = useState<Part[]>([])
+  const [saving, setSaving] = useState(false)
   const [orders, setOrders]   = useState<any[]>([])
   const [movements, setMovements] = useState<any[]>([])
   const [osList, setOsList]   = useState<any[]>([])
@@ -59,13 +60,17 @@ export default function PartsPage({ profile, can }: Props) {
   }
 
   async function savePart() {
-    if (!editing.name||!editing.code) { toast.error('Informe nome e código'); return }
+    if (saving) return
+    setSaving(true)
+    if (!editing.name||!editing.code) { toast.error('Informe nome e código'); setSaving(false); return }
     try {
       if (editing.id) {
         const { error } = await supabase.from('parts').update(editing).eq('id', editing.id)
+        setSaving(false)
         if (error) throw error; toast.success('Peça atualizada ✅')
       } else {
         const { error } = await supabase.from('parts').insert({ ...editing, created_at: new Date().toISOString() })
+        setSaving(false)
         if (error) throw error; toast.success('Peça cadastrada ✅')
       }
       setModal(false); load()
@@ -73,19 +78,21 @@ export default function PartsPage({ profile, can }: Props) {
   }
 
   async function saveMove() {
-    if (!move.part_id) { toast.error('Selecione a peça'); return }
-    if (!move.quantity||move.quantity<=0) { toast.error('Informe a quantidade'); return }
+    if (saving) return
+    setSaving(true)
+    if (!move.part_id) { toast.error('Selecione a peça'); setSaving(false); return }
+    if (!move.quantity||move.quantity<=0) { toast.error('Informe a quantidade'); setSaving(false); return }
     const part = parts.find(p=>p.id===move.part_id)
     if (!part) return
     let newStock = part.stock||0
     if (move.type==='in') newStock += Number(move.quantity)
     else if (move.type==='out') {
-      if (Number(move.quantity) > newStock) { toast.error(`Estoque insuficiente! Atual: ${newStock} ${part.unit}`); return }
+      if (Number(move.quantity) > newStock) { toast.error(`Estoque insuficiente! Atual: ${newStock} ${part.unit}`); setSaving(false); return }
       newStock -= Number(move.quantity)
     } else newStock = Number(move.quantity)
     try {
       const { error: e1 } = await supabase.from('parts').update({ stock: newStock }).eq('id', move.part_id)
-      if (e1) { toast.error('Erro: '+e1.message); return }
+      if (e1) { toast.error('Erro: '+e1.message); setSaving(false); return }
       const { error: e2 } = await supabase.from('stock_movements').insert({
         ...move,
         part_name: part.name, part_code: part.code,
@@ -93,19 +100,22 @@ export default function PartsPage({ profile, can }: Props) {
         created_by: profile?.display_name||profile?.email,
         created_at: new Date().toISOString()
       })
+      setSaving(false)
       toast.success(`Estoque: ${newStock} ${part.unit} ✅`)
       setMove({type:'in',quantity:1}); setModalMove(false); load()
     } catch(e:any) { toast.error('Erro: '+e.message) }
   }
 
   async function savePO() {
-    if (!editPO.part_id||!editPO.quantity) { toast.error('Preencha peça e quantidade'); return }
+    if (saving) return
+    setSaving(true)
+    if (!editPO.part_id||!editPO.quantity) { toast.error('Preencha peça e quantidade'); setSaving(false); return }
     const part = parts.find(p=>p.id===editPO.part_id)
     const obj = { ...editPO, part_name: part?.name, part_code: part?.code, status: editPO.status||'pending', created_by: profile?.display_name, created_at: new Date().toISOString() }
     try {
       if (editPO.id) {
         const { error: ePo } = await supabase.from('purchase_orders').update(obj).eq('id', editPO.id)
-        if (ePo) { toast.error('Erro: '+ePo.message); return }
+        if (ePo) { toast.error('Erro: '+ePo.message); setSaving(false); return }
         // If received, auto-update stock
         if (editPO.status==='received') {
           const newStock = (part?.stock||0) + Number(editPO.quantity)
@@ -113,11 +123,14 @@ export default function PartsPage({ profile, can }: Props) {
           if (e3) toast.error('Erro estoque: '+e3.message)
           const { error: e4 } = await supabase.from('stock_movements').insert({ part_id: editPO.part_id, part_name: part?.name, type:'in', quantity: editPO.quantity, reason: 'Recebimento de pedido de compra', stock_after: newStock, created_by: profile?.display_name, created_at: new Date().toISOString() })
           if (e4) toast.error('Erro movimento: '+e4.message)
+          setSaving(false)
           toast.success('Pedido recebido! Estoque atualizado ✅')
+        setSaving(false)
         } else { toast.success('Pedido atualizado ✅') }
       } else {
         const { error: ePo2 } = await supabase.from('purchase_orders').insert(obj)
-        if (ePo2) { toast.error('Erro: '+ePo2.message); return }
+        if (ePo2) { toast.error('Erro: '+ePo2.message); setSaving(false); return }
+        setSaving(false)
         toast.success('Pedido criado ✅')
       }
       setModalPO(false); load()
@@ -311,7 +324,7 @@ export default function PartsPage({ profile, can }: Props) {
 
       {/* Part Modal */}
       <Modal open={modal} onClose={()=>setModal(false)} title={editing.id?`Editar: ${editing.name}`:'Nova Peça'}
-        footer={<><Btn onClick={()=>setModal(false)} variant="secondary" size="md">Cancelar</Btn><Btn onClick={savePart} variant="primary" size="md">Salvar</Btn></>}>
+        footer={<><Btn onClick={()=>setModal(false)} variant="secondary" size="md">Cancelar</Btn><Btn onClick={savePart} variant="primary" size="md" disabled={saving}>{saving ? "Salvando..." : "Salvar"}</Btn></>}>
         <div className="grid grid-cols-2 gap-x-2">
           <Input label="Código *" value={editing.code} onChange={(v:string)=>setEdit((e:any)=>({...e,code:v}))} placeholder="ROL-22218" />
           <Select label="Categoria" value={editing.category} onChange={(v:string)=>setEdit((e:any)=>({...e,category:v}))} options={CATS} />
@@ -331,7 +344,7 @@ export default function PartsPage({ profile, can }: Props) {
 
       {/* Stock Movement Modal */}
       <Modal open={modalMove} onClose={()=>setModalMove(false)} title="Movimentação de Estoque"
-        footer={<><Btn onClick={()=>setModalMove(false)} variant="secondary" size="md">Cancelar</Btn><Btn onClick={saveMove} variant="primary" size="md">Confirmar</Btn></>}>
+        footer={<><Btn onClick={()=>setModalMove(false)} variant="secondary" size="md">Cancelar</Btn><Btn onClick={saveMove} variant="primary" size="md" disabled={saving}>{saving ? "Salvando..." : "Confirmar"}</Btn></>}>
         <Select label="Peça *" value={move.part_id} onChange={(v:string)=>setMove((e:any)=>({...e,part_id:v}))}
           options={[{value:'',label:'Selecione...'},...parts.map(p=>({value:p.id,label:`${CAT_ICONS[p.category||'']||'📦'} ${p.name} — ${p.stock} ${p.unit}`}))]} />
         <div className="mb-2.5">
@@ -382,7 +395,7 @@ export default function PartsPage({ profile, can }: Props) {
 
       {/* Purchase Order Modal */}
       <Modal open={modalPO} onClose={()=>setModalPO(false)} title={editPO.id?'Editar Pedido':'Novo Pedido de Compra'}
-        footer={<><Btn onClick={()=>setModalPO(false)} variant="secondary" size="md">Cancelar</Btn><Btn onClick={savePO} variant="primary" size="md">Salvar</Btn></>}>
+        footer={<><Btn onClick={()=>setModalPO(false)} variant="secondary" size="md">Cancelar</Btn><Btn onClick={savePO} variant="primary" size="md" disabled={saving}>{saving ? "Salvando..." : "Salvar"}</Btn></>}>
         <Select label="Peça *" value={editPO.part_id} onChange={(v:string)=>setEditPO((e:any)=>({...e,part_id:v}))}
           options={[{value:'',label:'Selecione...'},...parts.map(p=>({value:p.id,label:`${p.code} — ${p.name} (${p.stock} ${p.unit})`}))]} />
         <div className="grid grid-cols-2 gap-x-2">

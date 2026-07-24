@@ -14,6 +14,7 @@ const STATUS_LABEL: Record<string,string> = {pending:'Pendente',paid:'Pago',over
 
 export default function FinancePage({ profile, can }: Props) {
   const [bills, setBills]       = useState<any[]>([])
+  const [saving, setSaving] = useState(false)
   const [centers, setCenters]   = useState<any[]>([])
   const [suppliers, setSuppliers] = useState<any[]>([])
   const [loading, setLoad]      = useState(true)
@@ -51,8 +52,10 @@ export default function FinancePage({ profile, can }: Props) {
   }
 
   async function saveFixed() {
-    if (!editFix.description?.trim()) { toast.error('Informe a descrição'); return }
-    if (!editFix.value) { toast.error('Informe o valor'); return }
+    if (saving) return
+    setSaving(true)
+    if (!editFix.description?.trim()) { toast.error('Informe a descrição'); setSaving(false); return }
+    if (!editFix.value) { toast.error('Informe o valor'); setSaving(false); return }
     const obj = {
       description: editFix.description.trim(),
       value: parseFloat(editFix.value),
@@ -64,7 +67,8 @@ export default function FinancePage({ profile, can }: Props) {
     const { error } = editFix.id
       ? await supabase.from('fixed_expenses').update(obj).eq('id', editFix.id)
       : await supabase.from('fixed_expenses').insert({...obj, company_id: profile?.company_id||null})
-    if (error) { toast.error('Erro: '+error.message); return }
+    if (error) { toast.error('Erro: '+error.message); setSaving(false); return }
+    setSaving(false)
     toast.success(editFix.id?'Atualizado ✅':'Despesa fixa criada ✅')
     setFixModal(false); setEditFix({}); load()
   }
@@ -97,8 +101,10 @@ export default function FinancePage({ profile, can }: Props) {
   }
 
   async function saveBill() {
-    if (!editing.fornecedor_id) { toast.error('Selecione o fornecedor'); return }
-    if (!editing.valor)         { toast.error('Informe o valor'); return }
+    if (saving) return
+    setSaving(true)
+    if (!editing.fornecedor_id) { toast.error('Selecione o fornecedor'); setSaving(false); return }
+    if (!editing.valor)         { toast.error('Informe o valor'); setSaving(false); return }
     try {
       const obj = { ...editing, created_by: profile?.display_name||profile?.email, created_at: new Date().toISOString() }
       if (editing.id) {
@@ -108,21 +114,25 @@ export default function FinancePage({ profile, can }: Props) {
         const { error } = await supabase.from('accounts_payable').insert(obj)
         if (error) throw error
       }
+      setSaving(false)
       toast.success('Salvo ✅'); setModal(false); load()
     } catch(e:any) { toast.error('Erro: '+e.message) }
   }
 
   async function saveCenter() {
-    if (!editing.descricao) { toast.error('Informe a descrição'); return }
+    if (saving) return
+    setSaving(true)
+    if (!editing.descricao) { toast.error('Informe a descrição'); setSaving(false); return }
     try {
       const obj = { ...editing, active: true }
       if (editing.id) {
         const { error: eCc } = await supabase.from('cost_centers').update(obj).eq('id', editing.id)
-        if (eCc) { toast.error('Erro: '+eCc.message); return }
+        if (eCc) { toast.error('Erro: '+eCc.message); setSaving(false); return }
       } else {
         const { error: eCc2 } = await supabase.from('cost_centers').insert(obj)
-        if (eCc2) { toast.error('Erro: '+eCc2.message); return }
+        if (eCc2) { toast.error('Erro: '+eCc2.message); setSaving(false); return }
       }
+      setSaving(false)
       toast.success('Centro de custo salvo ✅'); setModal(false); load()
     } catch(e:any) { toast.error('Erro: '+e.message) }
   }
@@ -218,7 +228,7 @@ export default function FinancePage({ profile, can }: Props) {
 
           <Modal open={fixModal} onClose={()=>setFixModal(false)}
             title={editFix.id?'Editar Despesa Fixa':'Nova Despesa Fixa'}
-            footer={<><Btn onClick={()=>setFixModal(false)}>Cancelar</Btn><Btn onClick={saveFixed} variant="primary" size="md">Salvar</Btn></>}>
+            footer={<><Btn onClick={()=>setFixModal(false)}>Cancelar</Btn><Btn onClick={saveFixed} variant="primary" size="md" disabled={saving}>{saving ? "Salvando..." : "Salvar"}</Btn></>}>
             <Input label="Descrição *" value={editFix.description} onChange={(v:string)=>setEditFix((e:any)=>({...e,description:v}))} placeholder="Ex: Aluguel" />
             <div className="grid grid-cols-2 gap-x-3">
               <Input label="Valor R$ *" value={editFix.value} onChange={(v:string)=>setEditFix((e:any)=>({...e,value:v}))} type="number" placeholder="0.00" />
@@ -305,7 +315,7 @@ export default function FinancePage({ profile, can }: Props) {
 
           {/* Bill Modal */}
           <Modal open={modal&&tab==='bills'} onClose={()=>setModal(false)} title={editing.id?'Editar Conta':'Nova Conta a Pagar'}
-            footer={<><Btn onClick={()=>setModal(false)} variant="secondary" size="md">Cancelar</Btn><Btn onClick={saveBill} variant="primary" size="md">Salvar</Btn></>}>
+            footer={<><Btn onClick={()=>setModal(false)} variant="secondary" size="md">Cancelar</Btn><Btn onClick={saveBill} variant="primary" size="md" disabled={saving}>{saving ? "Salvando..." : "Salvar"}</Btn></>}>
             <SelectComCadastro label="Fornecedor *" tipo="fornecedor" value={editing.fornecedor_id||''} onChange={(v:string)=>setEdit((e:any)=>({...e,fornecedor_id:v}))}
               options={suppliers.map(s=>({value:s.id,label:s.nome_razao||s.nome_fantasia}))}
               companyId={profile?.company_id} createdBy={profile?.display_name} onCreatedRefresh={() => load()} />
@@ -343,7 +353,7 @@ export default function FinancePage({ profile, can }: Props) {
             </div>
           )}
           <Modal open={modal&&tab==='centers'} onClose={()=>setModal(false)} title={editing.id?'Editar Centro':'Novo Centro de Custo'}
-            footer={<><Btn onClick={()=>setModal(false)} variant="secondary" size="md">Cancelar</Btn><Btn onClick={saveCenter} variant="primary" size="md">Salvar</Btn></>}>
+            footer={<><Btn onClick={()=>setModal(false)} variant="secondary" size="md">Cancelar</Btn><Btn onClick={saveCenter} variant="primary" size="md" disabled={saving}>{saving ? "Salvando..." : "Salvar"}</Btn></>}>
             <div className="grid grid-cols-2 gap-x-2">
               <Input label="Código" value={editing.codigo} onChange={(v:string)=>setEdit((e:any)=>({...e,codigo:v}))} placeholder="CC-001" />
               <Input label="Grupo" value={editing.grupo} onChange={(v:string)=>setEdit((e:any)=>({...e,grupo:v}))} placeholder="Produção" />

@@ -34,6 +34,7 @@ function isWeekend(dateStr?: string) {
 
 export default function OSPage({ profile, can }: Props) {
   const [orders, setOrders]   = useState<WorkOrder[]>([])
+  const [saving, setSaving] = useState(false)
   const [machines, setMachines] = useState<any[]>([])
   const [users, setUsers]     = useState<any[]>([])
   const [parts, setParts]     = useState<any[]>([])
@@ -155,7 +156,9 @@ export default function OSPage({ profile, can }: Props) {
   }
 
   async function save() {
-    if (!editing.title) { toast.error('Informe o título'); return }
+    if (saving) return
+    setSaving(true)
+    if (!editing.title) { toast.error('Informe o título'); setSaving(false); return }
     const mach = machines.find(m => m.id === editing.machine_id)
     const usr  = users.find(u => u.id === editing.resp_id)
     const partsJson = JSON.stringify(partsUsedList)
@@ -178,8 +181,10 @@ export default function OSPage({ profile, can }: Props) {
         // Auto-deduct stock when closing OS
         if (wasNotDone && isNowDone && partsUsedList.length > 0) {
           await deductPartsFromStock(partsUsedList, editing.id, editing.number || '')
+          setSaving(false)
           toast.success(`OS concluída! ${partsUsedList.length} peça(s) baixadas do estoque ✅`)
         } else {
+          setSaving(false)
           toast.success('OS atualizada ✅')
         }
       } else {
@@ -196,6 +201,7 @@ export default function OSPage({ profile, can }: Props) {
         if (editing.status === 'done' && partsUsedList.length > 0 && data) {
           await deductPartsFromStock(partsUsedList, data.id, obj.number || '')
         }
+        setSaving(false)
         toast.success(`OS ${obj.number} criada ✅`)
       }
       setModal(false); load()
@@ -339,7 +345,7 @@ export default function OSPage({ profile, can }: Props) {
 
       {/* Edit/Create Modal */}
       <Modal open={modal} onClose={()=>setModal(false)} title={editing.id?'Editar OS':'Nova Ordem de Serviço'}
-        footer={<><Btn onClick={()=>setModal(false)} variant="secondary" size="md">Cancelar</Btn><Btn onClick={save} variant="primary" size="md">Salvar OS</Btn></>}>
+        footer={<><Btn onClick={()=>setModal(false)} variant="secondary" size="md">Cancelar</Btn><Btn onClick={save} variant="primary" size="md" disabled={saving}>{saving ? "Salvando..." : "Salvar OS"}</Btn></>}>
 
         {/* Weekend badge */}
         {editing.type === 'Fim de Semana' && (

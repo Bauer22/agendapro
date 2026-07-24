@@ -22,6 +22,7 @@ const REP_STATUS_LABEL: Record<string,string> = {open:'Aguardando envio',sent:'E
 
 export default function PMPage({ profile, can }: Props) {
   const [recs, setRecs]         = useState<any[]>([])
+  const [saving, setSaving] = useState(false)
   const [repairs, setRepairs]   = useState<any[]>([])
   const [machines, setMach]     = useState<any[]>([])
   const [parts, setParts]       = useState<any[]>([])
@@ -108,8 +109,10 @@ export default function PMPage({ profile, can }: Props) {
   }
 
   async function save() {
-    if (!editing.machine_id) { toast.error('Selecione a máquina'); return }
-    if (!editing.operator)   { toast.error('Informe o operador'); return }
+    if (saving) return
+    setSaving(true)
+    if (!editing.machine_id) { toast.error('Selecione a máquina'); setSaving(false); return }
+    if (!editing.operator)   { toast.error('Informe o operador'); setSaving(false); return }
     const mach = machines.find(m=>m.id===editing.machine_id)
     const obj = {
       ...editing,
@@ -122,10 +125,12 @@ export default function PMPage({ profile, can }: Props) {
       if (editing.id) {
         const { error } = await supabase.from('pm_reports').update(obj).eq('id', editing.id)
         if (error) throw error
+        setSaving(false)
         toast.success('MP atualizado ✅')
       } else {
         const { error } = await supabase.from('pm_reports').insert({ ...obj, created_at: new Date().toISOString() })
         if (error) throw error
+        setSaving(false)
         toast.success('MP registrado ✅')
       }
       setModal(false); load()
@@ -189,8 +194,10 @@ export default function PMPage({ profile, can }: Props) {
   }
 
   async function saveRepair() {
-    if (!editRepair.machine_id) { toast.error('Selecione a máquina'); return }
-    if (!editRepair.description) { toast.error('Descreva o problema'); return }
+    if (saving) return
+    setSaving(true)
+    if (!editRepair.machine_id) { toast.error('Selecione a máquina'); setSaving(false); return }
+    if (!editRepair.description) { toast.error('Descreva o problema'); setSaving(false); return }
     const mach = machines.find(m=>m.id===editRepair.machine_id)
     const obj = {
       ...editRepair,
@@ -217,12 +224,15 @@ export default function PMPage({ profile, can }: Props) {
               if (eSm) toast.error('Erro movimento: '+eSm.message)
             }
           }
+          setSaving(false)
           toast.success('Peças baixadas do estoque ✅')
         }
+        setSaving(false)
         toast.success('Conserto atualizado ✅')
       } else {
         const { error } = await supabase.from('repair_orders').insert({ ...obj, created_at: new Date().toISOString() })
         if (error) throw error
+        setSaving(false)
         toast.success('Envio para conserto registrado ✅')
       }
       setRepairModal(false); load()
@@ -442,7 +452,7 @@ export default function PMPage({ profile, can }: Props) {
 
       {/* PM Edit/Create Modal */}
       <Modal open={modal} onClose={()=>setModal(false)} title={editing.id?'Editar Relatório MP':'Novo Relatório MP'}
-        footer={<><Btn onClick={()=>setModal(false)} variant="secondary" size="md">Cancelar</Btn><Btn onClick={save} variant="primary" size="md">Salvar</Btn></>}>
+        footer={<><Btn onClick={()=>setModal(false)} variant="secondary" size="md">Cancelar</Btn><Btn onClick={save} variant="primary" size="md" disabled={saving}>{saving ? "Salvando..." : "Salvar"}</Btn></>}>
         <div className="grid grid-cols-2 gap-x-2">
           <Select label="Máquina *" value={editing.machine_id} onChange={(v:string)=>{setEdit((e:any)=>({...e,machine_id:v}));loadChecklist(v,editing.period||'monthly')}} options={[{value:'',label:'Selecione...'}, ...machines.map(m=>({value:m.id,label:`${m.icon||'⚙️'} ${m.name}`}))]} className="col-span-2" />
           <Select label="Período *" value={editing.period} onChange={(v:string)=>{setEdit((e:any)=>({...e,period:v}));loadChecklist(editing.machine_id||'',v)}}
@@ -478,7 +488,7 @@ export default function PMPage({ profile, can }: Props) {
 
       {/* Repair Modal */}
       <Modal open={repairModal} onClose={()=>setRepairModal(false)} title={editRepair.id?'Editar Conserto':'Enviar Peça para Conserto'}
-        footer={<><Btn onClick={()=>setRepairModal(false)} variant="secondary" size="md">Cancelar</Btn><Btn onClick={saveRepair} variant="primary" size="md">Salvar</Btn></>}>
+        footer={<><Btn onClick={()=>setRepairModal(false)} variant="secondary" size="md">Cancelar</Btn><Btn onClick={saveRepair} variant="primary" size="md" disabled={saving}>{saving ? "Salvando..." : "Salvar"}</Btn></>}>
         <Select label="Máquina *" value={editRepair.machine_id} onChange={(v:string)=>setEditRepair((e:any)=>({...e,machine_id:v}))}
           options={[{value:'',label:'Selecione...'}, ...machines.map(m=>({value:m.id,label:`${m.icon||'⚙️'} ${m.name}`}))]} />
         <Select label="Responsável" value={editRepair.operator_id||''} onChange={(v:string)=>{

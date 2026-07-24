@@ -9,6 +9,7 @@ import type { UserProfile } from '@/types'
 interface Props { profile: UserProfile|null; can:(p:string)=>boolean }
 export default function EnergyPage({ profile, can }: Props) {
   const [records, setRecords] = useState<any[]>([])
+  const [saving, setSaving] = useState(false)
   const [modal, setModal] = useState(false)
   const [editing, setEditing] = useState<any>({})
   const [loading, setLoading] = useState(true)
@@ -23,10 +24,13 @@ export default function EnergyPage({ profile, can }: Props) {
   }
 
   async function save() {
-    if (!editing.source||!editing.record_date) { toast.error('Preencha fonte e data'); return }
+    if (saving) return
+    setSaving(true)
+    if (!editing.source||!editing.record_date) { toast.error('Preencha fonte e data'); setSaving(false); return }
     const obj = { source:editing.source, record_date:editing.record_date, reading:parseFloat(editing.reading)||0, unit:editing.unit||'kWh', cost:parseFloat(editing.cost)||0, sector:editing.sector||'Geral', notes:editing.notes, created_by:profile?.display_name }
     const { error } = editing.id ? await supabase.from('energy_records').update(obj).eq('id',editing.id) : await supabase.from('energy_records').insert(obj)
-    if (error) { toast.error(error.message); return }
+    if (error) { toast.error(error.message); setSaving(false); return }
+    setSaving(false)
     toast.success('Leitura salva ✅'); setModal(false); load()
   }
 
@@ -72,7 +76,7 @@ export default function EnergyPage({ profile, can }: Props) {
       )}
 
       <Modal open={modal} onClose={()=>setModal(false)} title={editing.id?'Editar Leitura':'Nova Leitura de Energia'}
-        footer={<><Btn onClick={()=>setModal(false)}>Cancelar</Btn><Btn onClick={save} variant="primary" size="md">Salvar</Btn></>}>
+        footer={<><Btn onClick={()=>setModal(false)}>Cancelar</Btn><Btn onClick={save} variant="primary" size="md" disabled={saving}>{saving ? "Salvando..." : "Salvar"}</Btn></>}>
         <Select label="Fonte *" value={editing.source||'Energia elétrica'} onChange={(v:string)=>setEditing((e:any)=>({...e,source:v}))} options={['Energia elétrica','Vapor','Gás natural','Água','Ar comprimido','Outro']} />
         <div className="grid grid-cols-2 gap-x-3">
           <Input label="Data *" value={editing.record_date} onChange={(v:string)=>setEditing((e:any)=>({...e,record_date:v}))} type="date" />

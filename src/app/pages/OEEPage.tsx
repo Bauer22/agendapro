@@ -9,6 +9,7 @@ import type { UserProfile } from '@/types'
 interface Props { profile: UserProfile|null; can:(p:string)=>boolean }
 export default function OEEPage({ profile, can }: Props) {
   const [records, setRecords] = useState<any[]>([])
+  const [saving, setSaving] = useState(false)
   const [machines, setMachines] = useState<any[]>([])
   const [modal, setModal] = useState(false)
   const [editing, setEditing] = useState<any>({})
@@ -32,10 +33,13 @@ export default function OEEPage({ profile, can }: Props) {
   }
 
   async function save() {
-    if (!editing.machine_id||!editing.record_date) { toast.error('Selecione máquina e data'); return }
+    if (saving) return
+    setSaving(true)
+    if (!editing.machine_id||!editing.record_date) { toast.error('Selecione máquina e data'); setSaving(false); return }
     const obj = { machine_id: editing.machine_id, machine_name: machines.find(m=>m.id===editing.machine_id)?.name||'', record_date: editing.record_date, shift: editing.shift||'A', planned_time: parseFloat(editing.planned_time)||0, operating_time: parseFloat(editing.operating_time)||0, ideal_cycle_time: parseFloat(editing.ideal_cycle_time)||0, total_pieces: parseInt(editing.total_pieces)||0, defect_pieces: parseInt(editing.defect_pieces)||0, notes: editing.notes, created_by: profile?.display_name }
     const { error } = editing.id ? await supabase.from('oee_records').update(obj).eq('id',editing.id) : await supabase.from('oee_records').insert(obj)
-    if (error) { toast.error(error.message); return }
+    if (error) { toast.error(error.message); setSaving(false); return }
+    setSaving(false)
     toast.success('Registro salvo ✅'); setModal(false); load()
   }
 
@@ -91,7 +95,7 @@ export default function OEEPage({ profile, can }: Props) {
       )}
 
       <Modal open={modal} onClose={()=>setModal(false)} title="Registro de OEE"
-        footer={<><Btn onClick={()=>setModal(false)}>Cancelar</Btn><Btn onClick={save} variant="primary" size="md">Salvar</Btn></>}>
+        footer={<><Btn onClick={()=>setModal(false)}>Cancelar</Btn><Btn onClick={save} variant="primary" size="md" disabled={saving}>{saving ? "Salvando..." : "Salvar"}</Btn></>}>
         <Select label="Máquina *" value={editing.machine_id||''} onChange={(v:string)=>setEditing((e:any)=>({...e,machine_id:v}))} options={[{value:'',label:'Selecione...'}, ...machines.map(m=>({value:m.id,label:`${m.icon||'⚙️'} ${m.name}`}))]} />
         <div className="grid grid-cols-2 gap-x-3">
           <Input label="Data *" value={editing.record_date} onChange={(v:string)=>setEditing((e:any)=>({...e,record_date:v}))} type="date" />

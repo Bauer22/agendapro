@@ -11,6 +11,7 @@ const DEFAULT_ITEMS = ['Limpeza geral','EPI em uso','Extintores verificados','Si
 
 export default function AuditPage({ profile, can }: Props) {
   const [audits, setAudits] = useState<any[]>([])
+  const [saving, setSaving] = useState(false)
   const [machines, setMachines] = useState<any[]>([])
   const [modal, setModal] = useState(false)
   const [view, setView] = useState<any>(null)
@@ -34,11 +35,14 @@ export default function AuditPage({ profile, can }: Props) {
   }
 
   async function save() {
-    if (!editing.title&&!editing.type) { toast.error('Informe o tipo de auditoria'); return }
+    if (saving) return
+    setSaving(true)
+    if (!editing.title&&!editing.type) { toast.error('Informe o tipo de auditoria'); setSaving(false); return }
     const total = checkItems.length; const passed = checkItems.filter(i=>i.ok===true).length; const failed = checkItems.filter(i=>i.ok===false).length
     const obj = { title:editing.title||editing.type, type:editing.type||'Inspeção', machine_id:editing.machine_id||null, machine_name:machines.find(m=>m.id===editing.machine_id)?.name||'', audit_date:editing.audit_date||td(), auditor:profile?.display_name||'', items:checkItems, total_items:total, passed_items:passed, failed_items:failed, score:total>0?Math.round((passed/total)*100):0, notes:editing.notes, status:failed===0?'approved':'issues' }
     const { error } = await supabase.from('audits').insert(obj)
-    if (error) { toast.error(error.message); return }
+    if (error) { toast.error(error.message); setSaving(false); return }
+    setSaving(false)
     toast.success(`Auditoria registrada — Score: ${obj.score}% ✅`); setModal(false); load()
   }
 
@@ -95,7 +99,7 @@ export default function AuditPage({ profile, can }: Props) {
 
       {/* New audit modal */}
       <Modal open={modal} onClose={()=>setModal(false)} title="Nova Auditoria / Checklist"
-        footer={<><Btn onClick={()=>setModal(false)}>Cancelar</Btn><Btn onClick={save} variant="primary" size="md">Salvar</Btn></>}>
+        footer={<><Btn onClick={()=>setModal(false)}>Cancelar</Btn><Btn onClick={save} variant="primary" size="md" disabled={saving}>{saving ? "Salvando..." : "Salvar"}</Btn></>}>
         <Input label="Título" value={editing.title} onChange={(v:string)=>setEditing((e:any)=>({...e,title:v}))} placeholder="Ex: Inspeção diária linha 2" />
         <div className="grid grid-cols-2 gap-x-3">
           <Select label="Tipo" value={editing.type||'Inspeção diária'} onChange={(v:string)=>setEditing((e:any)=>({...e,type:v}))} options={['Inspeção diária','Inspeção semanal','Auditoria mensal','Checklist de segurança','Outro']} />

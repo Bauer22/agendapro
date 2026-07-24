@@ -13,6 +13,7 @@ const TYPES = ['Corretiva não planejada','Corretiva planejada','Preventiva','Se
 
 export default function DowntimePage({ profile, can }: Props) {
   const [records, setRecords]   = useState<any[]>([])
+  const [saving, setSaving] = useState(false)
   const [machines, setMachines] = useState<any[]>([])
   const [loading, setLoad]      = useState(true)
   const [modal, setModal]       = useState(false)
@@ -71,8 +72,10 @@ export default function DowntimePage({ profile, can }: Props) {
   }
 
   async function save() {
-    if (!editing.machine_id) { toast.error('Selecione a máquina'); return }
-    if (!editing.cause)       { toast.error('Informe a causa'); return }
+    if (saving) return
+    setSaving(true)
+    if (!editing.machine_id) { toast.error('Selecione a máquina'); setSaving(false); return }
+    if (!editing.cause)       { toast.error('Informe a causa'); setSaving(false); return }
     const mach = machines.find(m => m.id === editing.machine_id)
     const duration_min = editing.end_time ? calcDuration(editing.start_time, editing.end_time) : undefined
     const obj = { ...editing, machine_name: mach?.name, duration_min, created_by: profile?.display_name||profile?.email }
@@ -83,10 +86,12 @@ export default function DowntimePage({ profile, can }: Props) {
       if (editing.id) {
         ;({ error } = await supabase.from('downtime_records').update(obj).eq('id', editing.id))
         if (error) throw error
+        setSaving(false)
         toast.success('Registro atualizado ✅')
       } else {
         ;({ error } = await supabase.from('downtime_records').insert({ ...obj, created_at: new Date().toISOString() }))
         if (error) throw error
+        setSaving(false)
         toast.success('Parada registrada ✅')
       }
       setModal(false); load()
@@ -221,7 +226,7 @@ export default function DowntimePage({ profile, can }: Props) {
       )}
 
       <Modal open={modal} onClose={()=>setModal(false)} title={editing.id?'Editar Parada':'Registrar Parada'}
-        footer={<><Btn onClick={()=>setModal(false)} variant="secondary" size="md">Cancelar</Btn><Btn onClick={save} variant="primary" size="md">Salvar</Btn></>}>
+        footer={<><Btn onClick={()=>setModal(false)} variant="secondary" size="md">Cancelar</Btn><Btn onClick={save} variant="primary" size="md" disabled={saving}>{saving ? "Salvando..." : "Salvar"}</Btn></>}>
         <Select label="Máquina *" value={editing.machine_id} onChange={(v:string)=>setEdit((e:any)=>({...e,machine_id:v}))}
           options={[{value:'',label:'Selecione...'},...machines.map(m=>({value:m.id,label:`${m.icon||'⚙️'} ${m.name}`}))]} />
         <div className="grid grid-cols-2 gap-x-2">

@@ -10,6 +10,7 @@ interface Props { profile: UserProfile|null; can:(p:string)=>boolean }
 const CATS = ['Manual','Certificado','Procedimento','Ficha técnica','Norma','Projeto','Outro']
 export default function DocumentsPage({ profile, can }: Props) {
   const [docs, setDocs] = useState<any[]>([])
+  const [saving, setSaving] = useState(false)
   const [machines, setMachines] = useState<any[]>([])
   const [modal, setModal] = useState(false)
   const [editing, setEditing] = useState<any>({})
@@ -26,10 +27,13 @@ export default function DocumentsPage({ profile, can }: Props) {
   }
 
   async function save() {
-    if (!editing.title||!editing.category) { toast.error('Preencha título e categoria'); return }
+    if (saving) return
+    setSaving(true)
+    if (!editing.title||!editing.category) { toast.error('Preencha título e categoria'); setSaving(false); return }
     const obj = { title: editing.title, category: editing.category, machine_id: editing.machine_id||null, machine_name: machines.find(m=>m.id===editing.machine_id)?.name||'', description: editing.description, url: editing.url, file_name: editing.file_name, expires_at: editing.expires_at||null, created_by: profile?.display_name }
     const { error } = editing.id ? await supabase.from('documents').update(obj).eq('id',editing.id) : await supabase.from('documents').insert(obj)
-    if (error) { toast.error('Erro: '+error.message); return }
+    if (error) { toast.error('Erro: '+error.message); setSaving(false); return }
+    setSaving(false)
     toast.success('Documento salvo ✅'); setModal(false); load()
   }
 
@@ -77,7 +81,7 @@ export default function DocumentsPage({ profile, can }: Props) {
       )}
 
       <Modal open={modal} onClose={()=>setModal(false)} title={editing.id?'Editar Documento':'Novo Documento'}
-        footer={<><Btn onClick={()=>setModal(false)}>Cancelar</Btn><Btn onClick={save} variant="primary" size="md">Salvar</Btn></>}>
+        footer={<><Btn onClick={()=>setModal(false)}>Cancelar</Btn><Btn onClick={save} variant="primary" size="md" disabled={saving}>{saving ? "Salvando..." : "Salvar"}</Btn></>}>
         <Input label="Título *" value={editing.title} onChange={(v:string)=>setEditing((e:any)=>({...e,title:v}))} placeholder="Ex: Manual do Motor WEG" />
         <Select label="Categoria *" value={editing.category||'Manual'} onChange={(v:string)=>setEditing((e:any)=>({...e,category:v}))} options={CATS} />
         <Select label="Máquina vinculada" value={editing.machine_id||''} onChange={(v:string)=>setEditing((e:any)=>({...e,machine_id:v}))} options={[{value:'',label:'Nenhuma (documento geral)'}, ...machines.map(m=>({value:m.id,label:`${m.icon||'⚙️'} ${m.name}`}))]} />

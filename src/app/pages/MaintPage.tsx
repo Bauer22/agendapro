@@ -16,6 +16,7 @@ const STATUS_OPTS = [{value:'open',label:'🔵 Em aberto'},{value:'progress',lab
 
 export default function MaintPage({ profile, can }: Props) {
   const [recs, setRecs]     = useState<any[]>([])
+  const [saving, setSaving] = useState(false)
   const [machines, setMach] = useState<any[]>([])
   const [loading, setLoad]  = useState(true)
   const [modal, setModal]   = useState(false)
@@ -54,14 +55,17 @@ export default function MaintPage({ profile, can }: Props) {
   }
 
   async function save() {
-    if (!editing.machine_id) { toast.error('Selecione a máquina'); return }
-    if (!editing.resp)       { toast.error('Informe o responsável'); return }
+    if (saving) return
+    setSaving(true)
+    if (!editing.machine_id) { toast.error('Selecione a máquina'); setSaving(false); return }
+    if (!editing.resp)       { toast.error('Informe o responsável'); setSaving(false); return }
     const mach = machines.find(m=>m.id===editing.machine_id)
     const obj = { ...editing, machine_name: mach?.name, created_by: profile?.display_name||profile?.email }
     try {
       if (editing.id) {
         const { error } = await supabase.from('maintenance').update(obj).eq('id', editing.id)
         if (error) throw error
+        setSaving(false)
         toast.success('Manutenção atualizada ✅')
       } else {
         const { error } = await supabase.from('maintenance').insert({ ...obj, status: obj.status||'open', created_at: new Date().toISOString() })
@@ -74,6 +78,7 @@ export default function MaintPage({ profile, can }: Props) {
           if (eMu) toast.error('Erro ao atualizar máquina: '+eMu.message)
           }
         }
+        setSaving(false)
         toast.success('Manutenção registrada ✅')
       }
       setModal(false); load()
@@ -199,7 +204,7 @@ export default function MaintPage({ profile, can }: Props) {
 
       {/* Edit/Create Modal */}
       <Modal open={modal} onClose={()=>setModal(false)} title={editing.id?'Editar Manutenção':'Registrar Manutenção'}
-        footer={<><Btn onClick={()=>setModal(false)} variant="secondary" size="md">Cancelar</Btn><Btn onClick={save} variant="primary" size="md">Salvar</Btn></>}>
+        footer={<><Btn onClick={()=>setModal(false)} variant="secondary" size="md">Cancelar</Btn><Btn onClick={save} variant="primary" size="md" disabled={saving}>{saving ? "Salvando..." : "Salvar"}</Btn></>}>
         <Select label="Máquina *" value={editing.machine_id} onChange={(v:string)=>setEdit((e:any)=>({...e,machine_id:v}))}
           options={[{value:'',label:'Selecione...'}, ...machines.map(m=>({value:m.id,label:`${m.icon||'⚙️'} ${m.name}`}))]} />
         <div className="grid grid-cols-2 gap-x-2">
