@@ -36,7 +36,7 @@ export default function DashPage({ profile, can, onNavigate }: Props) {
         supabase.from('parts').select('stock,min_stock,name,unit,code'),
         supabase.from('downtime_records').select('*').eq('status','open'),
         supabase.from('oee_records').select('planned_time,operating_time,total_pieces,defect_pieces,ideal_cycle_time').gte('record_date', monthStart).lte('record_date', rangeEnd),
-        supabase.from('wood_entries').select('volume_m3,total_value,data_entrada').gte('data_entrada', monthStart).lte('data_entrada', rangeEnd),
+        supabase.from('wood_entries').select('volume_m3,total_value,data_entrada,weight_tons,peso_liquido').gte('data_entrada', monthStart).lte('data_entrada', rangeEnd),
         supabase.from('sales_orders').select('status,total_value,sale_date').in('status',['quote','confirmed','production','delivered','active']).gte('sale_date', monthStart).lte('sale_date', rangeEnd),
         supabase.from('audits').select('score,status,created_at').gte('created_at', new Date(Date.now()-30*86400000).toISOString()),
         supabase.from('trainings').select('status,expiry_date').lte('expiry_date', today),
