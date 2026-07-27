@@ -1,7 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
-import { Btn, Modal, Input, Select, SelectComCadastro, SH, Empty, KPI, Badge, Textarea, useConfirm } from '@/components/ui'
+import { Btn, Modal, Input, Select, SH, Empty, KPI, Badge, Textarea, useConfirm } from '@/components/ui'
 import { fmtD, td } from '@/lib/utils'
 import toast from 'react-hot-toast'
 import type { UserProfile } from '@/types'
@@ -290,7 +290,10 @@ export default function WoodPage({ profile, can }: Props) {
     } catch(err:any) { toast.error('Erro ao gerar PDF: '+err.message) }
   }
 
-  const totalTons = entries.slice(0, 30).reduce((s, e) => s + (parseFloat(e.weight_tons) || 0), 0)
+  const mesAtual = td().slice(0, 7) // YYYY-MM do dia de hoje
+  const totalTons = entries
+    .filter(e => (e.data_entrada || '').slice(0, 7) === mesAtual)
+    .reduce((s, e) => s + (parseFloat(e.weight_tons) || parseFloat(e.peso_liquido) || 0), 0)
   const totalEntries = entries.filter(e => e.data_entrada === td()).length
 
   return (
@@ -312,7 +315,7 @@ export default function WoodPage({ profile, can }: Props) {
       </div>
 
       <div className="grid grid-cols-2 gap-2 mb-3">
-        <KPI num={`${totalTons.toFixed(1)} t`} label="Toneladas (30 últ.)" color="green" />
+        <KPI num={`${totalTons.toFixed(1)} t`} label="Toneladas (mês)" color="green" />
         <KPI num={totalEntries} label="Entradas hoje" color="orange" />
       </div>
 
@@ -512,7 +515,7 @@ export default function WoodPage({ profile, can }: Props) {
           <Input label="Hora Descarga" value={editing.unload_time} onChange={(v:string) => setEditing((e:any) => ({...e, unload_time: v}))} type="time" />
         </div>
 
-        <SelectComCadastro label="Fornecedor *" tipo="fornecedor" value={editing.supplier_id || ''} onChange={(v:string) => {
+        <Select label="Fornecedor *" value={editing.supplier_id || ''} onChange={(v:string) => {
             const s = suppliers.find(x => x.id === v)
             const pr = precoDe(s?.name || '')
             setEditing((e:any) => ({
@@ -521,28 +524,25 @@ export default function WoodPage({ profile, can }: Props) {
               total_value: pr && e.weight_tons ? (pr * parseFloat(e.weight_tons)).toFixed(2) : e.total_value,
             }))
           }}
-          options={suppliers.map(s => ({value: s.id, label: s.name + (precoDe(s.name) ? ` — R$ ${precoDe(s.name).toFixed(2)}/t` : '')}))}
-          companyId={profile?.company_id} createdBy={profile?.display_name} onCreatedRefresh={() => loadSuppliers()} />
+          options={[{value:'',label:'Selecione o fornecedor...'}, ...suppliers.map(s => ({value: s.id, label: s.name + (precoDe(s.name) ? ` — R$ ${precoDe(s.name).toFixed(2)}/t` : '')}))]} />
 
         <Select label="Classe da Madeira *" value={editing.wood_class || '18 a 24'} onChange={(v:string) => setEditing((e:any) => ({...e, wood_class: v}))}
           options={WOOD_CLASSES} />
 
         {motoristas.length > 0 ? (
-          <SelectComCadastro label="Motorista *" tipo="motorista" value={editing.driver_id||''} onChange={(v:string) => {
+          <Select label="Motorista *" value={editing.driver_id||''} onChange={(v:string) => {
             const m = motoristas.find(x=>x.id===v)
             setEditing((e:any)=>({...e, driver_id:v, driver: m?.name||''}))
-          }} options={motoristas.map(m=>({value:m.id,label:m.name}))}
-             companyId={profile?.company_id} createdBy={profile?.display_name} onCreatedRefresh={() => loadSuppliers()} />
+          }} options={[{value:'',label:'Selecione o motorista...'}, ...motoristas.map(m=>({value:m.id,label:m.name}))]} />
         ) : (
           <Input label="Motorista *" value={editing.driver} onChange={(v:string) => setEditing((e:any) => ({...e, driver: v}))} placeholder="Nome completo do motorista" />
         )}
 
         {veiculos.length > 0 ? (
-          <SelectComCadastro label="Placa / Veículo *" tipo="veiculo" value={editing.veiculo_id||''} onChange={(v:string) => {
+          <Select label="Placa / Veículo *" value={editing.veiculo_id||''} onChange={(v:string) => {
             const ve = veiculos.find(x=>x.id===v)
             setEditing((e:any)=>({...e, veiculo_id:v, plate: ve?.placa||''}))
-          }} options={veiculos.map(ve=>({value:ve.id,label:`${ve.placa} (${ve.tipo})`}))}
-             companyId={profile?.company_id} createdBy={profile?.display_name} onCreatedRefresh={() => loadSuppliers()} />
+          }} options={[{value:'',label:'Selecione o veículo...'}, ...veiculos.map(ve=>({value:ve.id,label:`${ve.placa} (${ve.tipo})`}))]} />
         ) : (
           <Input label="Placa *" value={editing.plate} onChange={(v:string) => setEditing((e:any) => ({...e, plate: maskPlate(v)}))} placeholder="AAA0A00 ou AAA0000" />
         )}
