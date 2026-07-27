@@ -41,7 +41,8 @@ export default function GerencialPage({ profile, can }: Props) {
       supabase.from('v_saldo_parceiro').select('*'),
       supabase.from('v_vendas_produto_mes').select('*'),
     ])
-    if (c.error) toast.error('Erro: '+c.error.message+' — execute o SQL das views')
+    if (c.error) toast.error('Erro custo/m³: '+c.error.message)
+    if (cc.error) console.warn('v_custo_m3_centro indisponível:', cc.error.message)
     setCustos(c.data||[]); setCentros(cc.data||[]); setTransp(t.data||[])
     setConta(k.data||[]);  setSaldos(s.data||[]);   setVendas(v.data||[])
     setLoading(false)
@@ -80,14 +81,20 @@ export default function GerencialPage({ profile, can }: Props) {
   const fConta   = conta.filter(x => noPeriodo(x.mes))
   const fVendas  = vendas.filter(x => noPeriodo(x.mes))
 
-  // ── Consolidado do período ──
+  // ── Consolidado do período (9 categorias da view v_custo_m3_mensal) ──
   const T = {
-    m3:       fCustos.reduce((s,x)=>s+(+x.m3_produzido||0),0),
-    madeira:  fCustos.reduce((s,x)=>s+(+x.custo_madeira||0),0),
-    diesel:   fCustos.reduce((s,x)=>s+(+x.custo_diesel_producao||0),0),
-    despesas: fCustos.reduce((s,x)=>s+(+x.despesas_gerais||0),0),
+    m3:            fCustos.reduce((s,x)=>s+(+x.m3_produzido||0),0),
+    materiaPrima:  fCustos.reduce((s,x)=>s+(+x.custo_materia_prima||0),0),
+    maoObra:       fCustos.reduce((s,x)=>s+(+x.custo_mao_obra||0),0),
+    manutencao:    fCustos.reduce((s,x)=>s+(+x.custo_manutencao||0),0),
+    energia:       fCustos.reduce((s,x)=>s+(+x.custo_energia||0),0),
+    administrativo:fCustos.reduce((s,x)=>s+(+x.custo_administrativo||0),0),
+    maquinas:      fCustos.reduce((s,x)=>s+(+x.custo_maquinas||0),0),
+    diversas:      fCustos.reduce((s,x)=>s+(+x.custo_diversas||0),0),
+    fixosAdm:      fCustos.reduce((s,x)=>s+(+x.custo_fixos_adm||0),0),
+    melhorias:     fCustos.reduce((s,x)=>s+(+x.custo_melhorias||0),0),
   }
-  const custoTotal = T.madeira + T.diesel + T.despesas
+  const custoTotal = T.materiaPrima + T.maoObra + T.manutencao + T.energia + T.administrativo + T.maquinas + T.diversas + T.fixosAdm + T.melhorias
   const custoM3    = T.m3 > 0 ? custoTotal / T.m3 : 0
   const fatTotal   = fVendas.reduce((s,x)=>s+(+x.faturado||0),0)
   const margem     = fatTotal - custoTotal
@@ -350,9 +357,15 @@ export default function GerencialPage({ profile, can }: Props) {
               <div style={{fontSize:'10px',fontWeight:700,color:'#f97316',textTransform:'uppercase',letterSpacing:'1px',marginBottom:'8px'}}>
                 💰 COMPOSIÇÃO DO CUSTO POR m³
               </div>
-              <Row label="🪵 Madeira" value={`${money(T.m3>0?T.madeira/T.m3:0)}/m³`} color="var(--gn)" />
-              <Row label="⛽ Diesel produção" value={`${money(T.m3>0?T.diesel/T.m3:0)}/m³`} color="var(--am)" />
-              <Row label="📊 Despesas gerais" value={`${money(T.m3>0?T.despesas/T.m3:0)}/m³`} color="var(--pp)" />
+              <Row label="🪵 Matéria-Prima" value={`${money(T.m3>0?T.materiaPrima/T.m3:0)}/m³`} color="var(--gn)" />
+              <Row label="👷 Mão de Obra" value={`${money(T.m3>0?T.maoObra/T.m3:0)}/m³`} color="var(--cy)" />
+              <Row label="🔧 Manutenção" value={`${money(T.m3>0?T.manutencao/T.m3:0)}/m³`} color="var(--am)" />
+              <Row label="⚡ Energia" value={`${money(T.m3>0?T.energia/T.m3:0)}/m³`} color="var(--am)" />
+              <Row label="📋 Administrativo" value={`${money(T.m3>0?T.administrativo/T.m3:0)}/m³`} color="var(--pp)" />
+              <Row label="⚙️ Máquinas" value={`${money(T.m3>0?T.maquinas/T.m3:0)}/m³`} color="var(--cy)" />
+              <Row label="📦 Despesas Diversas" value={`${money(T.m3>0?T.diversas/T.m3:0)}/m³`} color="var(--pp)" />
+              <Row label="🏢 Custos Fixos e Adm" value={`${money(T.m3>0?T.fixosAdm/T.m3:0)}/m³`} color="var(--rd)" />
+              <Row label="🔨 Melhorias" value={`${money(T.m3>0?T.melhorias/T.m3:0)}/m³`} color="var(--gn)" />
               <div style={{height:'1px',background:'var(--bd)',margin:'6px 0'}} />
               <Row label="CUSTO TOTAL / m³" value={money(custoM3)} color="#f97316" bold />
               <div style={{fontSize:'9px',color:'var(--t3)',marginTop:'6px'}}>
@@ -363,14 +376,14 @@ export default function GerencialPage({ profile, can }: Props) {
             {fCustos.length===0 ? <Empty icon="📊" text="Sem dados no período." /> : (
               <div className="rounded-xl overflow-hidden" style={{border:'1px solid var(--bd)'}}>
                 <div className="grid px-2 py-2" style={{gridTemplateColumns:'54px 1fr 60px 60px 62px',background:'var(--s2)',fontSize:'9px',fontWeight:700,color:'var(--t3)',textTransform:'uppercase'}}>
-                  <span>Mês</span><span style={{textAlign:'right'}}>m³</span><span style={{textAlign:'right'}}>Madeira</span><span style={{textAlign:'right'}}>Diesel</span><span style={{textAlign:'right'}}>Total/m³</span>
+                  <span>Mês</span><span style={{textAlign:'right'}}>m³</span><span style={{textAlign:'right'}}>M.Prima</span><span style={{textAlign:'right'}}>M.Obra</span><span style={{textAlign:'right'}}>Total/m³</span>
                 </div>
                 {fCustos.map((x,i)=>(
                   <div key={i} className="grid px-2 py-2" style={{gridTemplateColumns:'54px 1fr 60px 60px 62px',background:'var(--s1)',borderTop:'1px solid var(--bd)',fontSize:'10px'}}>
                     <span style={{color:'var(--t2)',fontWeight:700}}>{x.mes.slice(5)}/{x.mes.slice(2,4)}</span>
                     <span style={{textAlign:'right',color:'var(--gn)'}}>{(+x.m3_produzido).toFixed(0)}</span>
-                    <span style={{textAlign:'right'}}>{n2(+x.madeira_por_m3)}</span>
-                    <span style={{textAlign:'right',color:'var(--am)'}}>{n2(+x.diesel_por_m3)}</span>
+                    <span style={{textAlign:'right'}}>{n2(+x.materia_prima_por_m3)}</span>
+                    <span style={{textAlign:'right',color:'var(--am)'}}>{n2(+x.mao_obra_por_m3)}</span>
                     <span style={{textAlign:'right',color:'#f97316',fontWeight:700}}>{n2(+x.custo_total_por_m3)}</span>
                   </div>
                 ))}
