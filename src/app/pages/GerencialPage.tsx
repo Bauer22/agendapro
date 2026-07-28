@@ -242,19 +242,19 @@ export default function GerencialPage({ profile, can }: Props) {
 <!DOCTYPE html><html><head><meta charset="utf-8"><title>Dashboard Gerencial</title>
 <style>
   @page { size: A4; margin: 14mm; }
-  body { font-family: Arial, sans-serif; color:#000; font-size:11px; }
+  body { font-family: Arial, sans-serif; color:#000; font-size:11px; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
   h1 { font-size:17px; text-align:center; margin-bottom:2px; }
-  .sub { text-align:center; font-size:11px; color:#555; margin-bottom:16px; }
-  h2 { font-size:12px; background:#eee; padding:6px 8px; margin:14px 0 6px; border-left:4px solid #f97316; }
+  .sub { text-align:center; font-size:11px; color:#000; margin-bottom:16px; }
+  h2 { font-size:12px; background:#d0d0d0; padding:6px 8px; margin:14px 0 6px; border-left:4px solid #f97316; color:#000; }
   table { width:100%; border-collapse:collapse; margin-bottom:8px; }
-  th, td { border:1px solid #999; padding:4px 6px; font-size:10px; }
-  th { background:#f5f5f5; }
+  th, td { border:1px solid #333; padding:4px 6px; font-size:10px; color:#000; }
+  th { background:#d0d0d0; }
   .r { text-align:right; }
-  .tot { background:#fff3e0; }
+  .tot { background:#ffd9a8; }
   .kpi { display:flex; gap:12px; margin-bottom:14px; }
-  .kpi div { flex:1; border:1px solid #999; padding:8px; text-align:center; }
+  .kpi div { flex:1; border:1px solid #333; padding:8px; text-align:center; }
   .kpi b { display:block; font-size:14px; }
-  .obs { font-size:10px; color:#555; }
+  .obs { font-size:10px; color:#333; }
 </style></head><body>
   <h1>DASHBOARD GERENCIAL</h1>
   <div class="sub">${periodoTxt} · Emitido em ${new Date().toLocaleString('pt-BR')}</div>

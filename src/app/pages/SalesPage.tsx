@@ -101,18 +101,18 @@ export default function SalesPage({ profile, can }: Props) {
 <style>
   @page { size: A4; margin: 18mm; }
   * { box-sizing: border-box; }
-  body { font-family: Arial, Helvetica, sans-serif; color:#000; margin:0; }
+  body { font-family: Arial, Helvetica, sans-serif; color:#000; margin:0; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
   h1 { font-size: 19px; text-align:center; margin:0 0 4px; letter-spacing:.5px; }
-  .sub { text-align:center; font-size:12px; color:#444; margin-bottom:18px; }
+  .sub { text-align:center; font-size:12px; color:#000; margin-bottom:18px; }
   .num { text-align:center; font-size:13px; font-weight:bold; margin-bottom:20px; }
   table { width:100%; border-collapse: collapse; margin-bottom: 26px; }
   td { border:1px solid #333; padding:9px 10px; font-size:13px; }
-  td.lbl { background:#f0f0f0; font-weight:bold; width:32%; }
+  td.lbl { background:#d0d0d0; font-weight:bold; width:32%; color:#000; }
   .assinaturas { margin-top: 48px; }
   .linha-ass { margin-bottom: 42px; }
   .linha { border-bottom:1px solid #000; height:34px; }
   .nome { font-size:12px; margin-top:4px; }
-  .obs { font-size:11px; color:#555; margin-top:24px; border-top:1px dashed #999; padding-top:8px; }
+  .obs { font-size:11px; color:#333; margin-top:24px; border-top:1px solid #333; padding-top:8px; }
 </style></head><body>
   <h1>AUTORIZAÇÃO DE CARREGAMENTO</h1>
   <div class="sub">Documento de liberação para saída de produto</div>
@@ -174,13 +174,13 @@ export default function SalesPage({ profile, can }: Props) {
 <!DOCTYPE html><html><head><meta charset="utf-8"><title>Extrato de Conta Corrente</title>
 <style>
   @page { size: A4; margin: 14mm; }
-  body { font-family: Arial, sans-serif; color:#000; font-size:11px; }
+  body { font-family: Arial, sans-serif; color:#000; font-size:11px; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
   h1 { font-size:17px; text-align:center; margin-bottom:4px; }
-  .sub { text-align:center; font-size:11px; color:#555; margin-bottom:18px; }
-  h2 { font-size:12px; background:#eee; padding:6px 8px; margin:16px 0 6px; border-left:4px solid #f97316; }
+  .sub { text-align:center; font-size:11px; color:#000; margin-bottom:18px; }
+  h2 { font-size:12px; background:#d0d0d0; padding:6px 8px; margin:16px 0 6px; border-left:4px solid #f97316; color:#000; }
   table { width:100%; border-collapse:collapse; margin-bottom:10px; }
-  th, td { border:1px solid #999; padding:4px 6px; font-size:10px; }
-  th { background:#f5f5f5; }
+  th, td { border:1px solid #333; padding:4px 6px; font-size:10px; color:#000; }
+  th { background:#d0d0d0; }
 </style></head><body>
   <h1>EXTRATO DE CONTA CORRENTE</h1>
   <div class="sub">Emitido em ${new Date().toLocaleString('pt-BR')}</div>

@@ -46,7 +46,7 @@ export default function QRPage({ profile, can, onNavigate }: Props) {
       <html><head><title>QR Code - ${m.name}</title>
       <style>body{font-family:system-ui;text-align:center;padding:40px;background:#fff}
       .card{border:2px solid #000;border-radius:12px;padding:24px;display:inline-block;max-width:280px}
-      h2{margin:8px 0;font-size:18px}p{margin:4px 0;color:#555;font-size:12px}
+      h2{margin:8px 0;font-size:18px}p{margin:4px 0;color:#000;font-size:12px}
       img{border-radius:8px}</style></head>
       <body><div class="card">
         <div style="font-size:32px">${m.icon||'⚙️'}</div>
@@ -54,7 +54,7 @@ export default function QRPage({ profile, can, onNavigate }: Props) {
         <p>${m.code||''} · ${m.location||m.sector||''}</p>
         <img src="${url}" width="200" height="200" style="margin:16px 0"/>
         <p>Escaneie para acessar o histórico</p>
-        <p style="font-size:10px;color:#999">Industrial8</p>
+        <p style="font-size:10px;color:#333">Industrial8</p>
       </div><script>window.print()</script></body></html>
     `)
     win.document.close()
