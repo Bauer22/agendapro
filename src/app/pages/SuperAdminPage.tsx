@@ -32,7 +32,44 @@ export default function SuperAdminPage({ profile }: Props) {
   const [editing, setEdit]        = useState<any>({})
   const [newUser, setNewUser]     = useState<any>({})
   const [tab, setTab]             = useState('companies')
+  const [allModules, setAllModules] = useState<any[]>([])
+  const [companyMods, setCompanyMods] = useState<Set<string>>(new Set())
   const { confirm, dialog }       = useConfirm()
+
+  // Carrega a lista global de módulos uma vez
+  useEffect(() => {
+    supabase.from('modules').select('id,label,icon,category,sort_order').order('sort_order')
+      .then(({data}) => setAllModules(data || []))
+  }, [])
+
+  // Ao abrir uma empresa para editar, carrega os módulos liberados dela
+  async function abrirEmpresa(c: any) {
+    setEdit(c)
+    const { data } = await supabase.from('company_modules')
+      .select('module_id,enabled').eq('company_id', c.id)
+    const ativos = new Set<string>((data||[]).filter((m:any)=>m.enabled).map((m:any)=>m.module_id))
+    setCompanyMods(ativos)
+    setModal(true)
+  }
+
+  function toggleModulo(moduleId: string) {
+    setCompanyMods(prev => {
+      const next = new Set(prev)
+      if (next.has(moduleId)) next.delete(moduleId); else next.add(moduleId)
+      return next
+    })
+  }
+
+  async function salvarModulosEmpresa(companyId: string) {
+    // Estratégia simples: apaga os vínculos atuais e regrava os marcados
+    await supabase.from('company_modules').delete().eq('company_id', companyId)
+    const rows = Array.from(companyMods).map(mid => ({
+      company_id: companyId, module_id: mid, enabled: true,
+    }))
+    if (rows.length > 0) {
+      await supabase.from('company_modules').insert(rows)
+    }
+  }
 
   useEffect(() => { load() }, [tab])
 
@@ -64,16 +101,30 @@ export default function SuperAdminPage({ profile }: Props) {
     setLoad(false)
   }
 
+  async function desbloquearUsuario(u: any) {
+    const ok = await confirm(`Desbloquear o usuário ${u.display_name || u.email}? As tentativas serão zeradas.`)
+    if (!ok) return
+    const { error } = await supabase.from('profiles')
+      .update({ blocked: false, failed_attempts: 0, blocked_at: null })
+      .eq('id', u.id)
+    if (error) { toast.error('Erro: ' + error.message); return }
+    toast.success('Usuário desbloqueado ✅')
+    load()
+  }
+
   async function saveCompany() {
     if (!editing.name) { toast.error('Informe o nome da empresa'); return }
     if (!editing.slug) { editing.slug = editing.name.toLowerCase().replace(/\s+/g,'-').replace(/[^a-z0-9-]/g,'') }
+    const payload = { ...editing, max_users: editing.max_users ? parseInt(editing.max_users, 10) : 5 }
     try {
       if (editing.id) {
-        await supabase.from('companies').update(editing).eq('id', editing.id)
+        await supabase.from('companies').update(payload).eq('id', editing.id)
+        await salvarModulosEmpresa(editing.id)
         toast.success('Empresa atualizada ✅')
       } else {
-        const { error } = await supabase.from('companies').insert({ ...editing, active:true, plan: editing.plan||'trial', plan_expires: editing.plan_expires || new Date(Date.now()+30*86400000).toISOString().split('T')[0] })
+        const { data, error } = await supabase.from('companies').insert({ ...payload, active:true, plan: editing.plan||'trial', plan_expires: editing.plan_expires || new Date(Date.now()+30*86400000).toISOString().split('T')[0] }).select('id').single()
         if (error) throw error
+        if (data?.id) await salvarModulosEmpresa(data.id)
         toast.success('Empresa criada ✅')
       }
       setModal(false); load()
@@ -160,7 +211,7 @@ export default function SuperAdminPage({ profile }: Props) {
 
       {tab==='companies' && (
         <>
-          <SH label={`Empresas (${companies.length})`} action={<Btn onClick={()=>{setEdit({plan:'trial'});setModal(true)}} size="sm" variant="primary">+ Nova Empresa</Btn>} />
+          <SH label={`Empresas (${companies.length})`} action={<Btn onClick={()=>{setEdit({plan:'trial'});setCompanyMods(new Set());setModal(true)}} size="sm" variant="primary">+ Nova Empresa</Btn>} />
           {loading?<div className="text-center py-8" style={{color:'var(--t3)'}}>Carregando...</div>:
           companies.length===0?<Empty icon="🏭" text="Nenhuma empresa cadastrada"/>:(
             <div className="flex flex-col gap-2">
@@ -186,7 +237,7 @@ export default function SuperAdminPage({ profile }: Props) {
                         </div>
                       </div>
                       <div className="flex flex-col gap-1">
-                        <button onClick={()=>{setEdit({...c});setModal(true)}} style={{background:'none',border:'none',color:'var(--t2)',cursor:'pointer',fontSize:'14px'}}>✏️</button>
+                        <button onClick={()=>abrirEmpresa(c)} style={{background:'none',border:'none',color:'var(--t2)',cursor:'pointer',fontSize:'14px'}}>✏️</button>
                         <button onClick={()=>toggleCompany(c)} style={{background:'none',border:'none',color:c.active?'var(--am)':'var(--gn)',cursor:'pointer',fontSize:'14px'}}>{c.active?'⏸️':'▶️'}</button>
                         <button onClick={()=>delCompany(c.id)} style={{background:'none',border:'none',color:'var(--rd)',cursor:'pointer',fontSize:'12px'}}>🗑️</button>
                       </div>
@@ -214,7 +265,12 @@ export default function SuperAdminPage({ profile }: Props) {
                     <div className="text-xs" style={{color:'var(--t2)'}}>@{(u.email||"").split("@")[0]}</div>
                     <div className="text-xs mt-0.5" style={{color:'var(--t3)'}}>🏭 {(u as any).companies?.name||'—'} · {u.role}</div>
                   </div>
-                  <Badge color={u.blocked?'red':'green'}>{u.blocked?'Bloqueado':'Ativo'}</Badge>
+                  <div className="flex items-center gap-2">
+                    <Badge color={u.blocked?'red':'green'}>{u.blocked?'Bloqueado':'Ativo'}</Badge>
+                    {u.blocked && (
+                      <Btn onClick={()=>desbloquearUsuario(u)} size="sm" variant="primary">🔓 Desbloquear</Btn>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
@@ -230,6 +286,7 @@ export default function SuperAdminPage({ profile }: Props) {
         <div className="grid grid-cols-2 gap-x-2">
           <Select label="Plano *" value={editing.plan||'trial'} onChange={(v:string)=>setEdit((e:any)=>({...e,plan:v}))} options={PLANS} />
           <Input label="Expira em" value={editing.plan_expires} onChange={(v:string)=>setEdit((e:any)=>({...e,plan_expires:v}))} type="date" />
+          <Input label="Limite de usuários" value={editing.max_users} onChange={(v:string)=>setEdit((e:any)=>({...e,max_users:v}))} type="number" placeholder="5" />
           <Input label="CNPJ" value={editing.cnpj} onChange={(v:string)=>setEdit((e:any)=>({...e,cnpj:v}))} placeholder="00.000.000/0001-00" />
           <Input label="Telefone" value={editing.phone} onChange={(v:string)=>setEdit((e:any)=>({...e,phone:v}))} type="tel" />
         </div>
@@ -240,6 +297,35 @@ export default function SuperAdminPage({ profile }: Props) {
             <div className="text-xs font-bold" style={{color:'var(--gn)'}}>💰 Receita: {PLAN_PRICES[editing.plan]}</div>
           </div>
         )}
+
+        {/* Módulos liberados para a empresa */}
+        <div className="mt-3">
+          <div className="flex justify-between items-center mb-2">
+            <span className="text-xs font-bold" style={{color:'var(--t2)'}}>📦 Módulos liberados ({companyMods.size}/{allModules.length})</span>
+            <div className="flex gap-1">
+              <button onClick={()=>setCompanyMods(new Set(allModules.map((m:any)=>m.id)))}
+                style={{fontSize:'10px',color:'var(--cy)',background:'none',border:'none',cursor:'pointer',fontWeight:700}}>Todos</button>
+              <span style={{color:'var(--t3)'}}>·</span>
+              <button onClick={()=>setCompanyMods(new Set())}
+                style={{fontSize:'10px',color:'var(--rd)',background:'none',border:'none',cursor:'pointer',fontWeight:700}}>Nenhum</button>
+            </div>
+          </div>
+          <div style={{maxHeight:'220px',overflowY:'auto',display:'grid',gridTemplateColumns:'1fr 1fr',gap:'4px'}}>
+            {allModules.map((m:any) => {
+              const on = companyMods.has(m.id)
+              return (
+                <div key={m.id} onClick={()=>toggleModulo(m.id)}
+                  style={{display:'flex',alignItems:'center',gap:'6px',padding:'6px 8px',borderRadius:'8px',cursor:'pointer',fontSize:'11px',
+                    background: on ? 'rgba(249,115,22,.12)' : 'var(--s2)',
+                    border: `1px solid ${on ? 'rgba(249,115,22,.4)' : 'var(--bd)'}`,
+                    color: on ? '#f97316' : 'var(--t3)', fontWeight: on ? 700 : 400}}>
+                  <span>{on ? '☑️' : '⬜'}</span>
+                  <span>{m.icon} {m.label}</span>
+                </div>
+              )
+            })}
+          </div>
+        </div>
       </Modal>
 
       {/* Invite User Modal */}

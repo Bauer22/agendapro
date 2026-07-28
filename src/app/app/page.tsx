@@ -77,6 +77,7 @@ export default function App() {
   const [page, setPage]    = useState<Page>('dashboard')
   const [splashDone, setSplashDone] = useState(false)
   const [userModules, setUserModules] = useState<string[]>([])
+  const [companyModules, setCompanyModules] = useState<string[]|null>(null)
   const [userPerms, setUserPerms] = useState<Record<string,{edit:boolean;del:boolean}>>({})
 
   // Auth init
@@ -115,6 +116,17 @@ export default function App() {
     }
   }
 
+  async function loadCompanyModules(companyId: string) {
+    const { data } = await supabase.from('company_modules')
+      .select('module_id,enabled').eq('company_id', companyId).eq('enabled', true)
+    // null = empresa sem configuração de módulos (libera tudo, retrocompatível)
+    if (data && data.length > 0) {
+      setCompanyModules(data.map((d:any) => d.module_id))
+    } else {
+      setCompanyModules(null)
+    }
+  }
+
   async function loadProfile(uid: string) {
     try {
       const { data: authUser } = await supabase.auth.getUser()
@@ -127,6 +139,7 @@ export default function App() {
           await supabase.from('profiles').update({ display_name: name, email }).eq('id', uid)
         }
         setProfile({ ...data, display_name: name, email: data.email || email })
+        if (data.company_id) loadCompanyModules(data.company_id)
       } else {
         const name = email.split('@')[0].replace(/[._]/g,' ').replace(/\w/g,(c:string)=>c.toUpperCase())
         const p: any = { id: uid, email, role: 'admin', display_name: name }
@@ -242,7 +255,11 @@ export default function App() {
   ]
 
   const NAV = ALL_NAV.filter(n => {
-    if (profile?.role === 'superadmin' || profile?.role === 'admin') return true
+    if (profile?.role === 'superadmin') return true
+    // Enforcement por empresa: se a empresa tem módulos configurados,
+    // o módulo precisa estar liberado (superadmin ignora essa regra).
+    if (companyModules !== null && !companyModules.includes(n.id) && n.id !== 'dashboard') return false
+    if (profile?.role === 'admin') return true
     if (userModules.length === 0) return ['dashboard','os','pm','tasks'].includes(n.id)
     return userModules.includes(n.id)
   })
@@ -325,14 +342,8 @@ export default function App() {
       </header>
 
       {/* NAV */}
-      <nav className="nav-scroll flex-shrink-0 flex overflow-x-auto" style={{background:'rgba(12,20,36,.98)',borderBottom:'1px solid rgba(249,115,22,.2)',boxShadow:'0 4px 12px rgba(0,0,0,.4)'}}>
-        <style>{`
-          .nav-scroll::-webkit-scrollbar { height: 5px; }
-          .nav-scroll::-webkit-scrollbar-track { background: transparent; }
-          .nav-scroll::-webkit-scrollbar-thumb { background: rgba(249,115,22,.4); border-radius: 3px; }
-          .nav-scroll::-webkit-scrollbar-thumb:hover { background: rgba(249,115,22,.6); }
-          .nav-scroll { scrollbar-width: thin; scrollbar-color: rgba(249,115,22,.4) transparent; }
-        `}</style>
+      <nav className="flex-shrink-0 flex overflow-x-auto" style={{background:'rgba(12,20,36,.98)',borderBottom:'1px solid rgba(249,115,22,.2)',scrollbarWidth:'none',boxShadow:'0 4px 12px rgba(0,0,0,.4)'}}>
+        <style>{`.nav-scroll::-webkit-scrollbar{display:none}`}</style>
         {NAV.map(n => (
           <button key={n.id} onClick={() => setPage(n.id)}
             className="flex-shrink-0 flex flex-col items-center justify-center gap-0.5 px-3 py-2 border-none cursor-pointer transition-all relative"

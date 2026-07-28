@@ -47,20 +47,41 @@ export default function LoginPage({ onLogin }: { onLogin?: () => void }) {
     setLoad(true)
     const email = usernameToEmail(username)
 
-    const { error } = await supabase.auth.signInWithPassword({ email, password: pass })
-
-    if (error) {
-      record()
-      const msgs: Record<string,string> = {
-        'Invalid login credentials': `Usuário ou senha incorretos. (${remaining - 1} tentativas restantes)`,
-        'Too many requests':         '🔒 Bloqueado temporariamente pelo servidor. Aguarde.',
-      }
-      setErr(msgs[error.message] || error.message)
+    // 1) Verifica se a conta já está bloqueada permanentemente no banco
+    const { data: bloqueio } = await supabase.rpc('fn_checar_bloqueio', { p_email: email })
+    if (bloqueio?.blocked) {
+      setErr('🔒 Conta bloqueada por tentativas incorretas. Contate o administrador.')
       setLoad(false)
       return
     }
 
+    const { error } = await supabase.auth.signInWithPassword({ email, password: pass })
+
+    if (error) {
+      record()
+      // 2) Registra a tentativa falha no banco e bloqueia ao atingir 3
+      const { data: tent } = await supabase.rpc('fn_registrar_tentativa_falha', { p_email: email })
+      if (tent?.blocked) {
+        setErr('🔒 Conta bloqueada após 3 tentativas incorretas. Contate o administrador.')
+      } else if (tent?.found && typeof tent?.remaining === 'number') {
+        setErr(`Usuário ou senha incorretos. (${tent.remaining} tentativa${tent.remaining===1?'':'s'} restante${tent.remaining===1?'':'s'})`)
+      } else {
+        const msgs: Record<string,string> = {
+          'Invalid login credentials': 'Usuário ou senha incorretos.',
+          'Too many requests':         '🔒 Bloqueado temporariamente pelo servidor. Aguarde.',
+        }
+        setErr(msgs[error.message] || error.message)
+      }
+      setLoad(false)
+      return
+    }
+
+    // 3) Login OK — zera as tentativas do usuário
     reset()
+    const { data: sess } = await supabase.auth.getUser()
+    if (sess?.user?.id) {
+      await supabase.rpc('fn_resetar_tentativas', { p_id: sess.user.id })
+    }
     setLoad(false)
   }
 
