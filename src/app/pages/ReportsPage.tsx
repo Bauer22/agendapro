@@ -119,14 +119,14 @@ export default function ReportsPage({ profile, can }: Props) {
       // de uma tabela só). Faltava esta definição — os 7 módulos que a chamavam
       // (oee, wood, sales, epi, training, audit, energy) davam erro ao gerar.
       function addTable(doc: any, title: string, head: string[], rows: any[][]) {
-        doc.setTextColor(226,232,240); doc.setFontSize(12); doc.setFont('helvetica','bold')
+        doc.setTextColor(20,20,20); doc.setFontSize(12); doc.setFont('helvetica','bold')
         doc.text(`${title} (${rows.length})`, 12, startY)
         autoTable(doc, {
           startY: startY+5,
           head: [head],
           body: rows,
           styles: { fontSize:7, cellPadding:2 },
-          headStyles: { fillColor:[6,13,26], textColor:[0,212,255] },
+          headStyles: { fillColor:[6,13,26], textColor:[255,255,255] },
           alternateRowStyles: { fillColor:[241,245,249] },
         })
         doc.save(`${title.replace(/\s+/g,'')}_${dateStr.replace(/\//g,'-')}.pdf`)
@@ -140,14 +140,14 @@ export default function ReportsPage({ profile, can }: Props) {
         if (fStatus) q = q.eq('status', fStatus)
         const { data } = await q
         const rows = (data||[]).map((o:any) => [o.number||'—',o.title?.slice(0,30)||'—',o.machine_name||'—',o.resp_name||'—',STATUS_INFO[o.status]?.label||o.status,fmtD(o.open_date),fmtD(o.due_date),o.priority||'—'])
-        doc.setTextColor(226,232,240); doc.setFontSize(12); doc.setFont('helvetica','bold')
+        doc.setTextColor(20,20,20); doc.setFontSize(12); doc.setFont('helvetica','bold')
         doc.text(`Ordens de Serviço (${rows.length})`, 12, startY)
         autoTable(doc, {
           startY: startY+5,
           head: [['Nº OS','Título','Máquina','Responsável','Status','Abertura','Prazo','Prioridade']],
           body: rows,
           styles: { fontSize:7, cellPadding:2 },
-          headStyles: { fillColor:[6,13,26], textColor:[0,212,255] },
+          headStyles: { fillColor:[6,13,26], textColor:[255,255,255] },
           alternateRowStyles: { fillColor:[241,245,249] },
         })
         doc.save(`OS_${dateStr.replace(/\//g,'-')}.pdf`)
@@ -160,14 +160,14 @@ export default function ReportsPage({ profile, can }: Props) {
         if (fUser)    q = q.ilike('resp', `%${users.find(u=>u.id===fUser)?.display_name||''}%`)
         const { data } = await q
         const rows = (data||[]).map((r:any) => [fmtD(r.date),r.machine_name||'—',r.type||'—',r.resp||'—',r.duration?r.duration+'h':'—',r.result||'—',r.status||'—'])
-        doc.setTextColor(226,232,240); doc.setFontSize(12); doc.setFont('helvetica','bold')
+        doc.setTextColor(20,20,20); doc.setFontSize(12); doc.setFont('helvetica','bold')
         doc.text(`Histórico de Manutenção (${rows.length})`, 12, startY)
         autoTable(doc, {
           startY: startY+5,
           head: [['Data','Máquina','Tipo','Responsável','Duração','Resultado','Status']],
           body: rows,
           styles: { fontSize:7, cellPadding:2 },
-          headStyles: { fillColor:[6,13,26], textColor:[0,212,255] },
+          headStyles: { fillColor:[6,13,26], textColor:[255,255,255] },
           alternateRowStyles: { fillColor:[241,245,249] },
         })
         doc.save(`Manutencao_${dateStr.replace(/\//g,'-')}.pdf`)
@@ -179,14 +179,14 @@ export default function ReportsPage({ profile, can }: Props) {
         if (fMach)    q = q.eq('machine_id', fMach)
         const { data } = await q
         const rows = (data||[]).map((r:any) => [fmtD(r.date),r.machine_name||'—',r.period||'—',r.operator||'—',r.hours_reading||'—',r.status||'—'])
-        doc.setTextColor(226,232,240); doc.setFontSize(12); doc.setFont('helvetica','bold')
+        doc.setTextColor(20,20,20); doc.setFontSize(12); doc.setFont('helvetica','bold')
         doc.text(`Relatórios MP (${rows.length})`, 12, startY)
         autoTable(doc, {
           startY: startY+5,
           head: [['Data','Máquina','Período','Operador','Horímetro','Status']],
           body: rows,
           styles: { fontSize:7, cellPadding:2 },
-          headStyles: { fillColor:[6,13,26], textColor:[0,212,255] },
+          headStyles: { fillColor:[6,13,26], textColor:[255,255,255] },
           alternateRowStyles: { fillColor:[241,245,249] },
         })
         doc.save(`MP_${dateStr.replace(/\//g,'-')}.pdf`)
@@ -194,14 +194,14 @@ export default function ReportsPage({ profile, can }: Props) {
       } else if (moduleId === 'parts') {
         const { data } = await supabase.from('parts').select('*').order('name')
         const rows = (data||[]).map((p:any) => [p.code||'—',p.name||'—',p.category||'—',`${p.stock} ${p.unit}`,p.min_stock,p.unit_value?`R$${p.unit_value}`:'—',p.location||'—',p.stock<=p.min_stock?'⚠️ BAIXO':'OK'])
-        doc.setTextColor(226,232,240); doc.setFontSize(12); doc.setFont('helvetica','bold')
+        doc.setTextColor(20,20,20); doc.setFontSize(12); doc.setFont('helvetica','bold')
         doc.text(`Inventário de Peças (${rows.length})`, 12, startY)
         autoTable(doc, {
           startY: startY+5,
           head: [['Código','Nome','Categoria','Estoque','Mínimo','Valor','Local','Situação']],
           body: rows,
           styles: { fontSize:7, cellPadding:2 },
-          headStyles: { fillColor:[6,13,26], textColor:[0,212,255] },
+          headStyles: { fillColor:[6,13,26], textColor:[255,255,255] },
           alternateRowStyles: { fillColor:[241,245,249] },
         })
         doc.save(`Pecas_${dateStr.replace(/\//g,'-')}.pdf`)
@@ -212,14 +212,14 @@ export default function ReportsPage({ profile, can }: Props) {
         if (fStatus) q = q.eq('status', fStatus)
         const { data } = await q
         const rows = (data||[]).map((o:any) => [o.part_name||'—',o.quantity,o.unit_value?`R$${o.unit_value}`:'—',o.status||'—',fmtD(o.date_requested),fmtD(o.date_expected)])
-        doc.setTextColor(226,232,240); doc.setFontSize(12); doc.setFont('helvetica','bold')
+        doc.setTextColor(20,20,20); doc.setFontSize(12); doc.setFont('helvetica','bold')
         doc.text(`Pedidos de Compra (${rows.length})`, 12, startY)
         autoTable(doc, {
           startY: startY+5,
           head: [['Peça','Qtd','Valor Unit.','Status','Solicitado','Previsto']],
           body: rows,
           styles: { fontSize:7, cellPadding:2 },
-          headStyles: { fillColor:[6,13,26], textColor:[0,212,255] },
+          headStyles: { fillColor:[6,13,26], textColor:[255,255,255] },
           alternateRowStyles: { fillColor:[241,245,249] },
         })
         doc.save(`PedidosCompra_${dateStr.replace(/\//g,'-')}.pdf`)
@@ -232,7 +232,7 @@ export default function ReportsPage({ profile, can }: Props) {
         const { data } = await q
         const totalPend = (data||[]).filter((b:any)=>b.status==='pending').reduce((s:number,b:any)=>s+(b.valor||0),0)
         const totalPaid = (data||[]).filter((b:any)=>b.status==='paid').reduce((s:number,b:any)=>s+(b.valor||0),0)
-        doc.setTextColor(226,232,240); doc.setFontSize(12); doc.setFont('helvetica','bold')
+        doc.setTextColor(20,20,20); doc.setFontSize(12); doc.setFont('helvetica','bold')
         doc.text(`Contas a Pagar (${(data||[]).length})`, 12, startY)
         doc.setFontSize(9); doc.setTextColor(245,158,11)
         doc.text(`Pendente: R$${totalPend.toFixed(2)} | Pago: R$${totalPaid.toFixed(2)}`, 12, startY+8)
@@ -241,7 +241,7 @@ export default function ReportsPage({ profile, can }: Props) {
           head: [['Vencimento','Valor','Status','Nº Doc','Pagamento']],
           body: (data||[]).map((b:any) => [fmtD(b.due_date),`R$${Number(b.valor||0).toFixed(2)}`,b.status||'—',b.numero_documento||'—',fmtD(b.data_recebimento)]),
           styles: { fontSize:7, cellPadding:2 },
-          headStyles: { fillColor:[6,13,26], textColor:[0,212,255] },
+          headStyles: { fillColor:[6,13,26], textColor:[255,255,255] },
           alternateRowStyles: { fillColor:[241,245,249] },
         })
         doc.save(`Financeiro_${dateStr.replace(/\//g,'-')}.pdf`)
@@ -312,7 +312,7 @@ export default function ReportsPage({ profile, can }: Props) {
         const vendas  = rVendas.data || []
         const saldo   = (rSaldo.data||[])[0] || null
 
-        doc.setTextColor(226,232,240); doc.setFontSize(14); doc.setFont('helvetica','bold')
+        doc.setTextColor(20,20,20); doc.setFontSize(14); doc.setFont('helvetica','bold')
         doc.text(`Relatório do Parceiro: ${parceiroNome}`, 12, startY)
         let y = startY + 8
 
@@ -324,7 +324,7 @@ export default function ReportsPage({ profile, can }: Props) {
           head: [['Data','Peso (t)','Valor']],
           body: compras.map((c:any)=>[fmtD(c.purchase_date||c.data_entrada), `${c.weight_tons||0}`, `R$ ${(c.total_value||0).toFixed(2)}`]),
           styles: { fontSize:7, cellPadding:2 },
-          headStyles: { fillColor:[6,13,26], textColor:[0,212,255] },
+          headStyles: { fillColor:[6,13,26], textColor:[255,255,255] },
           alternateRowStyles: { fillColor:[241,245,249] },
         })
         y = (doc as any).lastAutoTable.finalY + 10
@@ -338,7 +338,7 @@ export default function ReportsPage({ profile, can }: Props) {
           head: [['Data','Produto','Peso (t)','Valor','Motorista','Placa']],
           body: vendas.map((v:any)=>[fmtD(v.sale_date), v.product_name||'—', `${v.weight_tons||0}`, `R$ ${(v.total_value||0).toFixed(2)}`, v.driver||'—', v.plate||'—']),
           styles: { fontSize:7, cellPadding:2 },
-          headStyles: { fillColor:[6,13,26], textColor:[0,212,255] },
+          headStyles: { fillColor:[6,13,26], textColor:[255,255,255] },
           alternateRowStyles: { fillColor:[241,245,249] },
         })
         y = (doc as any).lastAutoTable.finalY + 10
@@ -348,7 +348,7 @@ export default function ReportsPage({ profile, can }: Props) {
         doc.setFontSize(11); doc.setTextColor(0,212,255)
         doc.text('Saldo da Conta Corrente', 12, y)
         y += 5
-        doc.setFontSize(9); doc.setTextColor(226,232,240)
+        doc.setFontSize(9); doc.setTextColor(20,20,20)
         if (saldo) {
           const linhas = [
             `Total Compras: R$ ${(+saldo.total_compras||0).toFixed(2)}`,
@@ -391,7 +391,7 @@ export default function ReportsPage({ profile, can }: Props) {
           head: [['Motorista','Tipo de Viagem','Viagens','Peso Total (t)']],
           body: linhasViagem.map(v => [v.motorista, v.tipo, `${v.qtd}`, `${v.peso.toFixed(1)}`]),
           styles: { fontSize:7, cellPadding:2 },
-          headStyles: { fillColor:[6,13,26], textColor:[0,212,255] },
+          headStyles: { fillColor:[6,13,26], textColor:[255,255,255] },
           alternateRowStyles: { fillColor:[241,245,249] },
         })
         doc.save(`Parceiro_${parceiroNome.replace(/\s+/g,'')}_${dateStr.replace(/\//g,'-')}.pdf`)
@@ -407,7 +407,7 @@ export default function ReportsPage({ profile, can }: Props) {
         const pagamentos = rPag.data || []
         const centros = rCentros.data || []
 
-        doc.setTextColor(226,232,240); doc.setFontSize(14); doc.setFont('helvetica','bold')
+        doc.setTextColor(20,20,20); doc.setFontSize(14); doc.setFont('helvetica','bold')
         doc.text('Relatório Financeiro Completo', 12, startY)
         let y = startY + 8
 
@@ -423,7 +423,7 @@ export default function ReportsPage({ profile, can }: Props) {
           head: [['Vencimento','Descrição','Centro de Custo','Valor','Status']],
           body: pagamentos.map((p:any) => [fmtD(p.due_date), p.descricao||'—', p.cost_centers ? `${p.cost_centers.codigo} - ${p.cost_centers.descricao}` : '—', `R$ ${(+p.valor||0).toFixed(2)}`, p.status==='paid'?'Pago':p.status==='pending'?'Pendente':p.status==='overdue'?'Vencido':p.status||'—']),
           styles: { fontSize:7, cellPadding:2 },
-          headStyles: { fillColor:[6,13,26], textColor:[0,212,255] },
+          headStyles: { fillColor:[6,13,26], textColor:[255,255,255] },
           alternateRowStyles: { fillColor:[241,245,249] },
         })
         y = (doc as any).lastAutoTable.finalY + 10
@@ -445,7 +445,7 @@ export default function ReportsPage({ profile, can }: Props) {
           head: [['Código','Descrição','Grupo','Qtd. Lançamentos','Total']],
           body: porCentro.map((c:any)=>[c.codigo, c.descricao, c.grupo, `${c.qtd}`, `R$ ${c.total.toFixed(2)}`]),
           styles: { fontSize:7, cellPadding:2 },
-          headStyles: { fillColor:[6,13,26], textColor:[0,212,255] },
+          headStyles: { fillColor:[6,13,26], textColor:[255,255,255] },
           alternateRowStyles: { fillColor:[241,245,249] },
         })
         doc.save(`FinanceiroCompleto_${dateStr.replace(/\//g,'-')}.pdf`)
