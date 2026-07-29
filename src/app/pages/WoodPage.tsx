@@ -242,15 +242,6 @@ export default function WoodPage({ profile, can }: Props) {
         theme:'grid', headStyles:{fillColor:[34,197,94]}, footStyles:{fillColor:[30,58,110]}, styles:{fontSize:8},
       })
 
-      // 3) Viagens por rota
-      y = (doc as any).lastAutoTable.finalY + 7
-      autoTable(doc, {
-        startY: y,
-        head: [['Motorista','Fornecedor','Viagens','Toneladas','Média t/viagem']],
-        body: rotaRows.map(r=>[r.mot, r.forn, String(r.cargas), r.tons.toFixed(3), (r.tons/r.cargas).toFixed(2)]),
-        theme:'striped', headStyles:{fillColor:[59,130,246]}, styles:{fontSize:7},
-      })
-
       // 4) Por placa e classe
       y = (doc as any).lastAutoTable.finalY + 7
       autoTable(doc, {
