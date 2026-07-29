@@ -21,17 +21,19 @@ const PLANS = [
 ]
 const PLAN_COLORS: Record<string,string> = {trial:'blue',basic:'green',pro:'amber',enterprise:'purple'}
 const PLAN_PRICES: Record<string,string> = {trial:'Gratuito',basic:'R$ 297/mês',pro:'R$ 550/mês',enterprise:'R$ 1.200/mês'}
+const PLAN_VALUES: Record<string,number> = {trial:0, basic:297, pro:550, enterprise:1200}
 
 export default function SuperAdminPage({ profile }: Props) {
   const [companies, setCompanies] = useState<any[]>([])
   const [users, setUsers]         = useState<any[]>([])
+  const [modStats, setModStats]   = useState<any[]>([])
   const [stats, setStats]         = useState<any>({})
   const [loading, setLoad]        = useState(true)
   const [modal, setModal]         = useState(false)
   const [userModal, setUserModal] = useState(false)
   const [editing, setEdit]        = useState<any>({})
   const [newUser, setNewUser]     = useState<any>({})
-  const [tab, setTab]             = useState('companies')
+  const [tab, setTab]             = useState('gerencial')
   const [allModules, setAllModules] = useState<any[]>([])
   const [companyMods, setCompanyMods] = useState<Set<string>>(new Set())
   const { confirm, dialog }       = useConfirm()
@@ -74,14 +76,14 @@ export default function SuperAdminPage({ profile }: Props) {
   useEffect(() => { load() }, [tab])
 
   async function load() {
-    if (tab === 'companies') {
+    if (tab === 'companies' || tab === 'gerencial') {
       const { data } = await supabase.from('companies').select('*').order('created_at', {ascending:false})
       setCompanies(data||[])
       // Get stats per company
       const companyIds = (data||[]).map((c:any)=>c.id)
       if (companyIds.length > 0) {
         const [profs, os] = await Promise.all([
-          supabase.from('profiles').select('company_id').in('company_id', companyIds),
+          supabase.from('profiles').select('company_id,blocked').in('company_id', companyIds),
           supabase.from('work_orders').select('company_id,status').in('company_id', companyIds),
         ])
         const statsMap: Record<string,any> = {}
@@ -93,6 +95,15 @@ export default function SuperAdminPage({ profile }: Props) {
           }
         })
         setStats(statsMap)
+      }
+      // Para o dashboard gerencial: usuários e módulos liberados
+      if (tab === 'gerencial') {
+        const [allProfs, allMods] = await Promise.all([
+          supabase.from('profiles').select('id,blocked,company_id'),
+          supabase.from('company_modules').select('module_id,enabled').eq('enabled', true),
+        ])
+        setUsers(allProfs.data||[])
+        setModStats(allMods.data||[])
       }
     } else {
       const { data } = await supabase.from('profiles').select('*,companies(name)').order('created_at',{ascending:false})
@@ -201,13 +212,112 @@ export default function SuperAdminPage({ profile }: Props) {
 
       {/* Tabs */}
       <div className="flex gap-1.5 mb-3">
-        {[{k:'companies',l:'🏭 Empresas'},{k:'users',l:'👥 Usuários'}].map(t=>(
+        {[{k:'gerencial',l:'📈 Gerencial'},{k:'companies',l:'🏭 Empresas'},{k:'users',l:'👥 Usuários'}].map(t=>(
           <button key={t.k} onClick={()=>setTab(t.k)} className="flex-1 py-1.5 rounded-xl text-xs font-semibold cursor-pointer border"
             style={{background:tab===t.k?'var(--cy)':'transparent',color:tab===t.k?'#000':'var(--t2)',borderColor:tab===t.k?'var(--cy)':'var(--bd)',fontFamily:'Sora,system-ui,sans-serif'}}>
             {t.l}
           </button>
         ))}
       </div>
+
+      {tab==='gerencial' && (() => {
+        const hoje = td()
+        const em7dias = new Date(Date.now()+7*86400000).toISOString().split('T')[0]
+        const ativas = companies.filter((c:any)=>c.active)
+        const inativas = companies.filter((c:any)=>!c.active)
+        const trials = companies.filter((c:any)=>c.plan==='trial')
+        const pagantes = companies.filter((c:any)=>c.active && c.plan!=='trial')
+        const mrr = pagantes.reduce((s:number,c:any)=>s+(PLAN_VALUES[c.plan]||0),0)
+        const arr = mrr*12
+        const ticket = pagantes.length>0 ? mrr/pagantes.length : 0
+        const totalUsers = users.length
+        const blockedUsers = users.filter((u:any)=>u.blocked).length
+        const vencidas = companies.filter((c:any)=>c.plan_expires && c.plan_expires < hoje && c.plan!=='trial')
+        const vencendo = companies.filter((c:any)=>c.plan_expires && c.plan_expires >= hoje && c.plan_expires <= em7dias)
+        const ultimos = [...companies].sort((a:any,b:any)=>(b.created_at||'').localeCompare(a.created_at||'')).slice(0,5)
+        // Ranking de módulos mais liberados
+        const modCount: Record<string,number> = {}
+        modStats.forEach((m:any)=>{ modCount[m.module_id] = (modCount[m.module_id]||0)+1 })
+        const modRank = Object.entries(modCount).map(([id,n])=>({
+          id, n, label: (allModules.find((am:any)=>am.id===id)?.label)||id,
+          icon: (allModules.find((am:any)=>am.id===id)?.icon)||'📦'
+        })).sort((a,b)=>b.n-a.n).slice(0,8)
+
+        const Card = ({label,value,sub,color}:any) => (
+          <div className="rounded-xl p-3" style={{background:'var(--s1)',border:'1px solid var(--bd)'}}>
+            <div style={{fontSize:'9px',color:'var(--t3)',fontWeight:700,textTransform:'uppercase',letterSpacing:'.5px'}}>{label}</div>
+            <div style={{fontSize:'22px',fontWeight:800,color:color||'var(--t1)',marginTop:'2px'}}>{value}</div>
+            {sub && <div style={{fontSize:'10px',color:'var(--t3)',marginTop:'2px'}}>{sub}</div>}
+          </div>
+        )
+
+        return (
+          <div className="flex flex-col gap-3">
+            <SH label="📈 Visão Geral do SaaS" />
+
+            {/* KPIs principais */}
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'8px'}}>
+              <Card label="Receita Mensal (MRR)" value={`R$ ${mrr.toLocaleString('pt-BR')}`} sub={`ARR: R$ ${arr.toLocaleString('pt-BR')}/ano`} color="var(--gn)" />
+              <Card label="Ticket Médio" value={`R$ ${ticket.toLocaleString('pt-BR',{maximumFractionDigits:0})}`} sub={`${pagantes.length} empresa(s) pagante(s)`} color="var(--cy)" />
+              <Card label="Empresas" value={companies.length} sub={`${ativas.length} ativas · ${inativas.length} inativas`} />
+              <Card label="Em Trial" value={trials.length} sub="período de teste" color="var(--am)" />
+              <Card label="Usuários" value={totalUsers} sub={`${blockedUsers} bloqueado(s)`} />
+              <Card label="Vencidas" value={vencidas.length} sub={vencidas.length>0?'⚠️ requer atenção':'tudo em dia'} color={vencidas.length>0?'var(--rd)':'var(--gn)'} />
+            </div>
+
+            {/* Alertas de vencimento */}
+            {(vencidas.length>0 || vencendo.length>0) && (
+              <div className="rounded-xl p-3" style={{background:'rgba(239,68,68,.06)',border:'1px solid rgba(239,68,68,.25)'}}>
+                <div style={{fontSize:'11px',fontWeight:800,color:'var(--rd)',marginBottom:'6px'}}>🔔 Alertas de Assinatura</div>
+                {vencidas.map((c:any)=>(
+                  <div key={c.id} style={{fontSize:'11px',color:'var(--t2)',marginBottom:'3px'}}>
+                    🔴 <b>{c.name}</b> — plano {c.plan} venceu em {fmtD(c.plan_expires)}
+                  </div>
+                ))}
+                {vencendo.map((c:any)=>(
+                  <div key={c.id} style={{fontSize:'11px',color:'var(--t2)',marginBottom:'3px'}}>
+                    🟡 <b>{c.name}</b> — vence em {fmtD(c.plan_expires)}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Módulos mais liberados */}
+            <div className="rounded-xl p-3" style={{background:'var(--s1)',border:'1px solid var(--bd)'}}>
+              <div style={{fontSize:'11px',fontWeight:800,color:'var(--t2)',marginBottom:'8px'}}>📦 Módulos mais liberados</div>
+              {modRank.length===0 ? (
+                <div style={{fontSize:'10px',color:'var(--t3)'}}>Nenhuma empresa com módulos configurados ainda.</div>
+              ) : modRank.map((m:any)=>{
+                const pct = ativas.length>0 ? Math.round(m.n/companies.length*100) : 0
+                return (
+                  <div key={m.id} style={{marginBottom:'6px'}}>
+                    <div className="flex justify-between" style={{fontSize:'10px',marginBottom:'2px'}}>
+                      <span>{m.icon} {m.label}</span>
+                      <span style={{color:'var(--t3)'}}>{m.n} empresa(s)</span>
+                    </div>
+                    <div style={{height:'5px',background:'var(--s2)',borderRadius:'3px',overflow:'hidden'}}>
+                      <div style={{height:'100%',width:`${pct}%`,background:'var(--cy)',borderRadius:'3px'}} />
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+
+            {/* Últimos cadastros */}
+            <div className="rounded-xl p-3" style={{background:'var(--s1)',border:'1px solid var(--bd)'}}>
+              <div style={{fontSize:'11px',fontWeight:800,color:'var(--t2)',marginBottom:'8px'}}>🆕 Últimos cadastros</div>
+              {ultimos.length===0 ? (
+                <div style={{fontSize:'10px',color:'var(--t3)'}}>Nenhuma empresa cadastrada.</div>
+              ) : ultimos.map((c:any)=>(
+                <div key={c.id} className="flex justify-between items-center" style={{fontSize:'11px',padding:'4px 0',borderTop:'1px solid var(--bd)'}}>
+                  <span><b>{c.name}</b> <span style={{color:'var(--t3)'}}>· {c.plan}</span></span>
+                  <span style={{color:'var(--t3)',fontSize:'10px'}}>{fmtD(c.created_at)}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )
+      })()}
 
       {tab==='companies' && (
         <>
