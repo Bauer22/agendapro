@@ -437,6 +437,7 @@ export default function SalesPage({ profile, can }: Props) {
           o.total_value?money(o.total_value):'—', o.payment_status==='pago'?'Pago':o.payment_status==='pendente'?'Pend.':'—']),
         theme:'striped', headStyles:{fillColor:[30,58,110]}, styles:{fontSize:7},
       })
+      y = (doc).lastAutoTable.finalY + 8; var motMap = {}; rep.forEach(function(o){ var k = o.driver || 'Nao informado'; if(!motMap[k]) motMap[k]={cargas:0,tons:0,m3:0}; motMap[k].cargas++; motMap[k].tons += parseFloat(o.weight_tons)||0; motMap[k].m3 += parseFloat(o.volume_m3)||0; }); var motRows = Object.keys(motMap).map(function(k){ var d=motMap[k]; return [k, String(d.cargas), d.tons.toFixed(3), d.m3.toFixed(2), (d.cargas>0?(d.tons/d.cargas):0).toFixed(2)]; }).sort(function(a,b){return parseFloat(b[2])-parseFloat(a[2]);}); if(motRows.length>0){ autoTable(doc, { startY: y, head: [['Motorista','Viagens','Toneladas','m3','Media t/viagem']], body: motRows, theme:'grid', headStyles:{fillColor:[34,197,94]}, styles:{fontSize:8} }); }
       doc.save(`vendas_${td()}.pdf`)
       toast.success('PDF gerado ✅')
     } catch(err:any) { toast.error('Erro ao gerar PDF: '+err.message) }
