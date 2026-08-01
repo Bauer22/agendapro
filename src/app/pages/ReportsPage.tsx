@@ -47,7 +47,8 @@ export default function ReportsPage({ profile, can }: Props) {
   useEffect(() => { loadMeta() }, [])
 
   async function loadMeta() {
-    const [m, u, s, os, maint, parts, pm, cad, rRecebido, rPago] = await Promise.all([supabase.from('machines').select('id,name,icon'),
+    const [m, u, s, os, maint, parts, pm, cad] = await Promise.all([
+      supabase.from('machines').select('id,name,icon'),
       supabase.from('profiles').select('id,display_name,email'),
       supabase.from('suppliers').select('id,name,razao_social'),
       supabase.from('work_orders').select('status'),
@@ -55,7 +56,8 @@ export default function ReportsPage({ profile, can }: Props) {
       supabase.from('parts').select('stock,min_stock'),
       supabase.from('pm_reports').select('id'),
       supabase.from('cadastros').select('id,nome_razao').eq('status',true)
-        .or('is_cliente.eq.true,is_fornecedor.eq.true').order('nome_razao'),, qRecebido, qPago])
+        .or('is_cliente.eq.true,is_fornecedor.eq.true').order('nome_razao'),
+    ])
     setMachines(m.data||[]); setUsers(u.data||[]); setSuppliers(s.data||[])
     setParceiros(cad.data||[])
     const osList = os.data||[]
@@ -303,10 +305,6 @@ export default function ReportsPage({ profile, can }: Props) {
         if (dateFrom) qVendas = qVendas.gte('sale_date', dateFrom)
         if (dateTo)   qVendas = qVendas.lte('sale_date', dateTo)
         let qSaldo = supabase.from('v_saldo_conta_corrente').select('*').eq('parceiro', nomeUpper)
-        let qRecebido = supabase.from('client_payments').select('*').ilike('client_name', parceiroNome).order('payment_date',{ascending:false})
-        let qPago = supabase.from('supplier_payments').select('*').ilike('supplier_name', parceiroNome).order('payment_date',{ascending:false})
-        if (dateFrom) { qRecebido = qRecebido.gte('payment_date', dateFrom); qPago = qPago.gte('payment_date', dateFrom) }
-        if (dateTo)   { qRecebido = qRecebido.lte('payment_date', dateTo);   qPago = qPago.lte('payment_date', dateTo) }
 
         const [rCompras, rWood, rVendas, rSaldo] = await Promise.all([qCompras, qWood, qVendas, qSaldo])
         // compras: usa tiquete se existir, senão wood_entries (mesma regra da conta corrente)
@@ -367,47 +365,6 @@ export default function ReportsPage({ profile, can }: Props) {
           doc.text('Sem movimentação de conta corrente para este parceiro.', 12, y)
           y += 10
         }
-
-        // ── Secao: Pagamentos e Recebimentos (data e valor) ──
-        var pagRows = [];
-        (rRecebido && rRecebido.data ? rRecebido.data : []).forEach(function(p){
-          pagRows.push([
-            p.payment_date ? new Date(p.payment_date+'T00:00:00').toLocaleDateString('pt-BR') : '-',
-            'RECEBIMENTO',
-            p.method || '-',
-            'R$ ' + (Number(p.value)||0).toFixed(2)
-          ]);
-        });
-        (rPago && rPago.data ? rPago.data : []).forEach(function(p){
-          pagRows.push([
-            p.payment_date ? new Date(p.payment_date+'T00:00:00').toLocaleDateString('pt-BR') : '-',
-            'PAGAMENTO',
-            p.method || '-',
-            'R$ ' + (Number(p.value)||0).toFixed(2)
-          ]);
-        });
-        if (pagRows.length > 0) {
-          y = (doc).lastAutoTable ? (doc).lastAutoTable.finalY + 7 : y + 7;
-          doc.setFontSize(11); doc.setTextColor(0,0,0); doc.setFont('helvetica','bold');
-          doc.text('Pagamentos e Recebimentos', 12, y);
-          y += 2;
-          autoTable(doc, {
-            startY: y + 2,
-            head: [['Data','Tipo','Forma','Valor']],
-            body: pagRows,
-            theme: 'striped',
-            headStyles: { fillColor:[20,30,50], textColor:[255,255,255] },
-            bodyStyles: { textColor:[20,20,20] },
-            styles: { fontSize: 8 },
-            didParseCell: function(d){
-              if (d.section === 'body' && d.column.index === 3) {
-                var t = (d.row && d.row.raw && d.row.raw[1]) ? String(d.row.raw[1]) : '';
-                d.cell.styles.textColor = (t === 'PAGAMENTO') ? [200,0,0] : [0,120,0];
-              }
-            }
-          });
-        }
-
 
         // ── Seção 4: Viagens por motorista, agrupadas por tipo ──
         if (y > 250) { doc.addPage(); y = 20 }
