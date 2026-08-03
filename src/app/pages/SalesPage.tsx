@@ -437,7 +437,43 @@ export default function SalesPage({ profile, can }: Props) {
           o.total_value?money(o.total_value):'—', o.payment_status==='pago'?'Pago':o.payment_status==='pendente'?'Pend.':'—']),
         theme:'striped', headStyles:{fillColor:[30,58,110]}, styles:{fontSize:7},
       })
-      y = (doc).lastAutoTable.finalY + 8; var motMap = {}; rep.forEach(function(o){ var k = o.driver || 'Nao informado'; if(!motMap[k]) motMap[k]={cargas:0,tons:0,m3:0}; motMap[k].cargas++; motMap[k].tons += parseFloat(o.weight_tons)||0; motMap[k].m3 += parseFloat(o.volume_m3)||0; }); var motRows = Object.keys(motMap).map(function(k){ var d=motMap[k]; return [k, String(d.cargas), d.tons.toFixed(3), d.m3.toFixed(2), (d.cargas>0?(d.tons/d.cargas):0).toFixed(2)]; }).sort(function(a,b){return parseFloat(b[2])-parseFloat(a[2]);}); if(motRows.length>0){ autoTable(doc, { startY: y, head: [['Motorista','Viagens','Toneladas','m3','Media t/viagem']], body: motRows, theme:'grid', headStyles:{fillColor:[34,197,94]}, styles:{fontSize:8} }); }
+      y = (doc).lastAutoTable.finalY + 8; var motMap = {}; rep.forEach(function(o){ var k = o.driver || 'Nao informado'; if(!motMap[k]) motMap[k]={cargas:0,tons:0,m3:0}; motMap[k].cargas++; motMap[k].tons += parseFloat(o.weight_tons)||0; motMap[k].m3 += parseFloat(o.volume_m3)||0; }); var motRows = Object.keys(motMap).map(function(k){ var d=motMap[k]; return [k, String(d.cargas), d.tons.toFixed(3), d.m3.toFixed(2), (d.cargas>0?(d.tons/d.cargas):0).toFixed(2)]; }).sort(function(a,b){return parseFloat(b[2])-parseFloat(a[2]);}); if(motRows.length>0){ autoTable(doc, { startY: y, head: [['Motorista','Viagens','Toneladas','m3','Media t/viagem']], body: motRows, theme:'grid', headStyles:{fillColor:[34,197,94]}, styles:{fontSize:8} }); }      // -- Conta Corrente: recebimentos do periodo + saldo real --
+      var nomeCliVen = rCli ? (clients.find(function(x){return x.id===rCli;})||{}).name : null;
+      var qRecVen = supabase.from('client_payments').select('*').order('payment_date',{ascending:false});
+      if (nomeCliVen) qRecVen = qRecVen.ilike('client_name', nomeCliVen);
+      if (rFrom) qRecVen = qRecVen.gte('payment_date', rFrom);
+      if (rTo)   qRecVen = qRecVen.lte('payment_date', rTo);
+      var qSaldoVen = supabase.from('v_saldo_conta_corrente').select('*');
+      if (nomeCliVen) qSaldoVen = qSaldoVen.ilike('parceiro', nomeCliVen);
+      var resCC = await Promise.all([qRecVen, qSaldoVen]);
+      var rRecVen = resCC[0]; var rSaldoVen = resCC[1];
+      var recebRowsVen = (rRecVen && rRecVen.data ? rRecVen.data : []).map(function(p){
+        return [ p.payment_date ? new Date(p.payment_date+'T00:00:00').toLocaleDateString('pt-BR') : '-', p.client_name || '-', p.method || '-', 'R$ ' + (Number(p.value)||0).toFixed(2) ];
+      });
+      if (recebRowsVen.length > 0) {
+        y = (doc).lastAutoTable ? (doc).lastAutoTable.finalY + 8 : y + 8;
+        doc.setFontSize(11); doc.setTextColor(0,0,0); doc.setFont('helvetica','bold');
+        doc.text('Recebimentos do Periodo', 12, y);
+        autoTable(doc, { startY: y + 3, head: [['Data','Cliente','Forma','Valor']], body: recebRowsVen, theme:'striped', headStyles:{fillColor:[16,185,129]}, bodyStyles:{textColor:[20,20,20]}, styles:{fontSize:8} });
+        y = (doc).lastAutoTable.finalY + 8;
+      }
+      var totalRecVen = (rRecVen && rRecVen.data ? rRecVen.data : []).reduce(function(s,p){return s + (Number(p.value)||0);}, 0);
+      var saldoVen = (rSaldoVen && rSaldoVen.data && rSaldoVen.data.length > 0) ? rSaldoVen.data : [];
+      y = (doc).lastAutoTable ? (doc).lastAutoTable.finalY + 8 : y + 8;
+      if (y > 250) { doc.addPage(); y = 20; }
+      doc.setFontSize(11); doc.setTextColor(0,0,0); doc.setFont('helvetica','bold');
+      doc.text('Resumo de Conta Corrente', 12, y);
+      y += 6;
+      doc.setFontSize(9); doc.setFont('helvetica','normal'); doc.setTextColor(20,20,20);
+      doc.text('Total Vendido: R$ ' + (repVal||0).toFixed(2), 12, y); y += 5;
+      doc.text('Total Recebido: R$ ' + totalRecVen.toFixed(2), 12, y); y += 5;
+      if (saldoVen.length > 0) {
+        var totReceber = saldoVen.reduce(function(s,x){return s + (Number(x.a_receber)||0);}, 0);
+        doc.setFont('helvetica','bold');
+        doc.text('SALDO A RECEBER: R$ ' + totReceber.toFixed(2), 12, y); y += 6;
+      }
+
+
       doc.save(`vendas_${td()}.pdf`)
       toast.success('PDF gerado ✅')
     } catch(err:any) { toast.error('Erro ao gerar PDF: '+err.message) }
