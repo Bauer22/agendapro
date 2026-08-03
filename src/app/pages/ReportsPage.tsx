@@ -47,8 +47,7 @@ export default function ReportsPage({ profile, can }: Props) {
   useEffect(() => { loadMeta() }, [])
 
   async function loadMeta() {
-    const [m, u, s, os, maint, parts, pm, cad] = await Promise.all([
-      supabase.from('machines').select('id,name,icon'),
+    const [m, u, s, os, maint, parts, pm, cad, rRecebidoPar, rPagoPar] = await Promise.all([supabase.from('machines').select('id,name,icon'),
       supabase.from('profiles').select('id,display_name,email'),
       supabase.from('suppliers').select('id,name,razao_social'),
       supabase.from('work_orders').select('status'),
@@ -56,8 +55,7 @@ export default function ReportsPage({ profile, can }: Props) {
       supabase.from('parts').select('stock,min_stock'),
       supabase.from('pm_reports').select('id'),
       supabase.from('cadastros').select('id,nome_razao').eq('status',true)
-        .or('is_cliente.eq.true,is_fornecedor.eq.true').order('nome_razao'),
-    ])
+        .or('is_cliente.eq.true,is_fornecedor.eq.true').order('nome_razao'),, qRecebidoPar, qPagoPar])
     setMachines(m.data||[]); setUsers(u.data||[]); setSuppliers(s.data||[])
     setParceiros(cad.data||[])
     const osList = os.data||[]
@@ -305,6 +303,10 @@ export default function ReportsPage({ profile, can }: Props) {
         if (dateFrom) qVendas = qVendas.gte('sale_date', dateFrom)
         if (dateTo)   qVendas = qVendas.lte('sale_date', dateTo)
         let qSaldo = supabase.from('v_saldo_conta_corrente').select('*').eq('parceiro', nomeUpper)
+        let qRecebidoPar = supabase.from('client_payments').select('*').ilike('client_name', parceiroNome).order('payment_date',{ascending:false})
+        let qPagoPar = supabase.from('supplier_payments').select('*').ilike('supplier_name', parceiroNome).order('payment_date',{ascending:false})
+        if (dateFrom) { qRecebidoPar = qRecebidoPar.gte('payment_date', dateFrom); qPagoPar = qPagoPar.gte('payment_date', dateFrom) }
+        if (dateTo)   { qRecebidoPar = qRecebidoPar.lte('payment_date', dateTo);   qPagoPar = qPagoPar.lte('payment_date', dateTo) }
 
         const [rCompras, rWood, rVendas, rSaldo] = await Promise.all([qCompras, qWood, qVendas, qSaldo])
         // compras: usa tiquete se existir, senão wood_entries (mesma regra da conta corrente)
@@ -368,7 +370,21 @@ export default function ReportsPage({ profile, can }: Props) {
 
         // ── Seção 4: Viagens por motorista, agrupadas por tipo ──
         if (y > 250) { doc.addPage(); y = 20 }
-        doc.setFont('helvetica','bold'); doc.setFontSize(11); doc.setTextColor(0,212,255)
+        doc.setFont('helvetica','bold'); doc.setFontSize(11); doc.setTextColor(0,212,255)        var pagRowsPar = [];
+        (rRecebidoPar && rRecebidoPar.data ? rRecebidoPar.data : []).forEach(function(p){
+          pagRowsPar.push([ p.payment_date ? new Date(p.payment_date+'T00:00:00').toLocaleDateString('pt-BR') : '-', 'RECEBIMENTO', p.method || '-', 'R$ ' + (Number(p.value)||0).toFixed(2) ]);
+        });
+        (rPagoPar && rPagoPar.data ? rPagoPar.data : []).forEach(function(p){
+          pagRowsPar.push([ p.payment_date ? new Date(p.payment_date+'T00:00:00').toLocaleDateString('pt-BR') : '-', 'PAGAMENTO', p.method || '-', 'R$ ' + (Number(p.value)||0).toFixed(2) ]);
+        });
+        if (pagRowsPar.length > 0) {
+          y = (doc).lastAutoTable ? (doc).lastAutoTable.finalY + 8 : y + 8;
+          doc.setFontSize(11); doc.setTextColor(0,0,0); doc.setFont('helvetica','bold');
+          doc.text('Pagamentos e Recebimentos', 12, y);
+          autoTable(doc, { startY: y + 3, head: [['Data','Tipo','Forma','Valor']], body: pagRowsPar, theme: 'striped', headStyles: { fillColor:[20,30,50], textColor:[255,255,255] }, bodyStyles: { textColor:[20,20,20] }, styles: { fontSize: 8 } });
+        }
+
+
         doc.text('Viagens por Motorista', 12, y)
         // chave = "motorista||tipo" — tipo é "MADEIRA {fornecedor}" para compras
         // ou o nome do produto para vendas (ex: LAMINA, ROLETE)
