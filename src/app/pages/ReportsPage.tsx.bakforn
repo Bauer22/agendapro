@@ -397,7 +397,7 @@ export default function ReportsPage({ profile, can }: Props) {
         doc.save(`Parceiro_${parceiroNome.replace(/\s+/g,'')}_${dateStr.replace(/\//g,'-')}.pdf`)
 
       } else if (moduleId === 'financeiro_completo') {
-        let qPag = supabase.from('accounts_payable').select('*, cost_centers(codigo,descricao), cadastros!fornecedor_id(nome_razao)').order('due_date',{ascending:false})
+        let qPag = supabase.from('accounts_payable').select('*, cost_centers(codigo,descricao)').order('due_date',{ascending:false})
         if (dateFrom) qPag = qPag.gte('due_date', dateFrom)
         if (dateTo)   qPag = qPag.lte('due_date', dateTo)
         const [rPag, rCentros] = await Promise.all([
@@ -421,7 +421,7 @@ export default function ReportsPage({ profile, can }: Props) {
         autoTable(doc, {
           startY: y+9,
           head: [['Vencimento','Descrição','Centro de Custo','Valor','Status']],
-          body: pagamentos.map((p:any) => [fmtD(p.due_date), (p.cadastros ? p.cadastros.nome_razao : '-'), p.descricao||'—', p.cost_centers ? `${p.cost_centers.codigo} - ${p.cost_centers.descricao}` : '—', `R$ ${(+p.valor||0).toFixed(2)}`, p.status==='paid'?'Pago':p.status==='pending'?'Pendente':p.status==='overdue'?'Vencido':p.status||'—']),
+          body: pagamentos.map((p:any) => [fmtD(p.due_date), p.descricao||'—', p.cost_centers ? `${p.cost_centers.codigo} - ${p.cost_centers.descricao}` : '—', `R$ ${(+p.valor||0).toFixed(2)}`, p.status==='paid'?'Pago':p.status==='pending'?'Pendente':p.status==='overdue'?'Vencido':p.status||'—']),
           styles: { fontSize:7, cellPadding:2 },
           headStyles: { fillColor:[6,13,26], textColor:[255,255,255] },
           alternateRowStyles: { fillColor:[241,245,249] },
