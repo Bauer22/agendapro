@@ -264,7 +264,7 @@ export default function WoodPage({ profile, can }: Props) {
       autoTable(doc, {
         startY: 14,
         head: [['Data','Descarga','Fornecedor','Classe','Motorista','Placa','Ton','R$/t','Valor']],
-        body: [...rep].sort((a,b)=>(a.data_entrada||'').localeCompare(b.data_entrada||'')).map(e=>[
+        body: rep.map(e=>[
           fmtD(e.data_entrada),
           e.unload_time?.slice(0,5) || e.arrival_time?.slice(0,5) || '—',
           e.supplier_name||'—', e.wood_class||'—', e.driver||'—', e.plate||'—',
