@@ -264,7 +264,7 @@ export default function WoodPage({ profile, can }: Props) {
       autoTable(doc, {
         startY: 14,
         head: [['Data','Descarga','Fornecedor','Classe','Motorista','Placa','Ton','R$/t','Valor']],
-        body: [...rep].sort(function sortWoodDetalhe(a,b){ var da=(a.data_entrada||'')+''; var db=(b.data_entrada||'')+''; if(da!==db) return da.localeCompare(db); var ha=((a.unload_time||a.arrival_time||'')+''); var hb=((b.unload_time||b.arrival_time||'')+''); return ha.localeCompare(hb); }).map(e=>[
+        body: [...rep].sort((a,b)=>((a.created_at||a.data_entrada||'')+'').localeCompare((b.created_at||b.data_entrada||'')+'')).map(e=>[
           fmtD(e.data_entrada),
           e.unload_time?.slice(0,5) || e.arrival_time?.slice(0,5) || '—',
           e.supplier_name||'—', e.wood_class||'—', e.driver||'—', e.plate||'—',
