@@ -16,7 +16,6 @@ export default function FinancePage({ profile, can }: Props) {
   const [bills, setBills]       = useState<any[]>([])
   const [saving, setSaving] = useState(false)
   const [centers, setCenters]   = useState<any[]>([])
-  const [machines, setMachines] = useState<any[]>([])
   const [suppliers, setSuppliers] = useState<any[]>([])
   const [loading, setLoad]      = useState(true)
   const [modal, setModal]       = useState(false)
@@ -33,14 +32,12 @@ export default function FinancePage({ profile, can }: Props) {
 
   async function load() {
     if (tab === 'bills') {
-      const [b, c, s, m] = await Promise.all([
+      const [b, c, s] = await Promise.all([
         supabase.from('accounts_payable').select('*').order('due_date',{ascending:false}),
         supabase.from('cost_centers').select('*').eq('active', true),
-        supabase.from('cadastros').select('id,nome_razao,nome_fantasia').eq('is_fornecedor',true).eq('status',true),            <Select label="Maquina (opcional)" value={editing.machine_id||''} onChange={(v:string)=>setEdit((e:any)=>({...e,machine_id:v||null}))} options={[{value:'',label:'Nenhuma'},...machines.map(mq=>({value:mq.id,label:(mq.code?mq.code+' - ':'')+mq.name}))]} />
-
-        supabase.from('machines').select('id,code,name').order('name'),
+        supabase.from('cadastros').select('id,nome_razao,nome_fantasia').eq('is_fornecedor',true).eq('status',true),
       ])
-      setBills(b.data||[]); setCenters(c.data||[]); setSuppliers(s.data||[]); setMachines(m.data||[])
+      setBills(b.data||[]); setCenters(c.data||[]); setSuppliers(s.data||[])
     } else if (tab === 'fixed') {
       const [f, c2] = await Promise.all([
         supabase.from('fixed_expenses').select('*').order('description'),
