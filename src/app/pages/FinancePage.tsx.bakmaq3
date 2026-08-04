@@ -16,7 +16,6 @@ export default function FinancePage({ profile, can }: Props) {
   const [bills, setBills]       = useState<any[]>([])
   const [saving, setSaving] = useState(false)
   const [centers, setCenters]   = useState<any[]>([])
-  const [machines, setMachines] = useState<any[]>([])
   const [suppliers, setSuppliers] = useState<any[]>([])
   const [loading, setLoad]      = useState(true)
   const [modal, setModal]       = useState(false)
@@ -33,13 +32,12 @@ export default function FinancePage({ profile, can }: Props) {
 
   async function load() {
     if (tab === 'bills') {
-      const [b, c, s, m] = await Promise.all([
+      const [b, c, s] = await Promise.all([
         supabase.from('accounts_payable').select('*').order('due_date',{ascending:false}),
         supabase.from('cost_centers').select('*').eq('active', true),
         supabase.from('cadastros').select('id,nome_razao,nome_fantasia').eq('is_fornecedor',true).eq('status',true),
-        supabase.from('machines').select('id,code,name').order('name'),
       ])
-      setBills(b.data||[]); setCenters(c.data||[]); setSuppliers(s.data||[]); setMachines(m.data||[])
+      setBills(b.data||[]); setCenters(c.data||[]); setSuppliers(s.data||[])
     } else if (tab === 'fixed') {
       const [f, c2] = await Promise.all([
         supabase.from('fixed_expenses').select('*').order('description'),
@@ -323,7 +321,6 @@ export default function FinancePage({ profile, can }: Props) {
               companyId={profile?.company_id} createdBy={profile?.display_name} onCreatedRefresh={() => load()} />
             <Select label="Centro de Custo" value={editing.centro_custo_id} onChange={(v:string)=>setEdit((e:any)=>({...e,centro_custo_id:v}))}
               options={[{value:'',label:'Nenhum'},...centers.map(c=>({value:c.id,label:`${c.codigo} - ${c.descricao}`}))]} />
-            <Select label="Maquina (opcional)" value={editing.machine_id||''} onChange={(v:string)=>setEdit((e:any)=>({...e,machine_id:v||null}))} options={[{value:'',label:'Nenhuma'},...machines.map(mq=>({value:mq.id,label:(mq.code?mq.code+' - ':'')+mq.name}))]} />
             <div className="grid grid-cols-2 gap-x-2">
               <Input label="Nº Documento" value={editing.numero_documento} onChange={(v:string)=>setEdit((e:any)=>({...e,numero_documento:v}))} placeholder="NF-001" />
               <Input label="Valor R$ *" value={editing.valor} onChange={(v:string)=>setEdit((e:any)=>({...e,valor:parseFloat(v)||0}))} type="number" placeholder="0.00" />
