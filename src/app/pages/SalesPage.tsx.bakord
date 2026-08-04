@@ -432,7 +432,7 @@ export default function SalesPage({ profile, can }: Props) {
       y = (doc as any).lastAutoTable.finalY + 8
       autoTable(doc, {
         startY: y, head: [['Romaneio','NF','Data','Cliente','Motorista','Placa','Produto','Ton','m³','Valor','Pgto']],
-        body: [...rep].sort((a,b)=>(a.sale_date||'').localeCompare(b.sale_date||'')).map(o=>[String(o.romaneio_num||''), o.invoice||'—', fmtD(o.sale_date), o.client_name||'—', o.driver||'—', o.plate||'—', o.product_name||'—',
+        body: rep.map(o=>[String(o.romaneio_num||''), o.invoice||'—', fmtD(o.sale_date), o.client_name||'—', o.driver||'—', o.plate||'—', o.product_name||'—',
           o.weight_tons?parseFloat(o.weight_tons).toFixed(2):'—', o.volume_m3?parseFloat(o.volume_m3).toFixed(1):'—',
           o.total_value?money(o.total_value):'—', o.payment_status==='pago'?'Pago':o.payment_status==='pendente'?'Pend.':'—']),
         theme:'striped', headStyles:{fillColor:[30,58,110]}, styles:{fontSize:7},
