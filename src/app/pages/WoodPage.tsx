@@ -44,7 +44,6 @@ export default function WoodPage({ profile, can }: Props) {
       .order('data_entrada', { ascending: false })
       .order('unload_time', { ascending: false, nullsFirst: false })
       .order('created_at', { ascending: false })
-      .limit(200)
     if (error) toast.error('Erro ao carregar: ' + error.message)
     setEntries(data || [])
     setLoading(false)
