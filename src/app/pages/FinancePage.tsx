@@ -160,9 +160,16 @@ export default function FinancePage({ profile, can }: Props) {
 
   const filtered = bills.filter(b => {
     const sup = suppliers.find(s=>s.id===b.fornecedor_id)
+    const center = centers.find(c=>c.id===b.centro_custo_id)
     const q = search.toLowerCase()
-    return (!fStatus||b.status===fStatus) &&
-      (!q||(sup?.nome_razao||'').toLowerCase().includes(q)||(b.numero_documento||'').toLowerCase().includes(q))
+    if (fStatus && b.status !== fStatus) return false
+    if (!q) return true
+    const campos = [
+      sup?.nome_razao, b.numero_documento, b.descricao, b.valor,
+      b.due_date, b.data_emissao, b.data_recebimento, b.status,
+      center?.codigo, center?.descricao
+    ].map(x => (x===null||x===undefined) ? '' : String(x).toLowerCase())
+    return campos.some(c => c.includes(q))
   })
 
   return (
@@ -262,7 +269,7 @@ export default function FinancePage({ profile, can }: Props) {
           </div>
 
           <div className="flex gap-2 mb-2">
-            <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="🔍 Fornecedor ou Nº doc..."
+            <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="🔍 Buscar por fornecedor, nº doc, descrição, valor, data, centro de custo..."
               className="flex-1 rounded-xl px-3 py-2 text-xs outline-none"
               style={{background:'var(--s1)',border:'1px solid var(--bd)',color:'var(--t1)',fontFamily:'Sora,system-ui,sans-serif'}}
               onFocus={e=>e.target.style.borderColor='var(--cy)'} onBlur={e=>e.target.style.borderColor='var(--bd)'} />
