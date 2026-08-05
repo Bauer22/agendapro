@@ -473,7 +473,7 @@ export default function WoodPage({ profile, can }: Props) {
               ['Placa', view.plate || '—'],
               ['Toneladas', `${parseFloat(view.weight_tons||0).toFixed(3)} t`],
               ['Metros cúbicos', view.volume_m3 ? `${parseFloat(view.volume_m3).toFixed(2)} m³` : '—'],
-              ['R$ / tonelada', view.unit_value ? `R$ ${parseFloat(view.unit_value).toFixed(2)}` : '—'],
+              ['R$ / tonelada', view.unit_value ? `R$ ${money(parseFloat(view.unit_value))}` : '—'],
               ['Valor total', view.total_value ? `R$ ${parseFloat(view.total_value).toLocaleString('pt-BR',{minimumFractionDigits:2})}` : '—'],
               ['Observação', view.observation || '—'],
               ['Registrado por', view.created_by || '—'],

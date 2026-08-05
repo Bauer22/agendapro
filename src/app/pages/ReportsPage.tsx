@@ -80,6 +80,7 @@ export default function ReportsPage({ profile, can }: Props) {
     return query
   }
 
+  const fmtR = (v:any) => Number(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})
   async function generate(moduleId: string) {
     if (moduleId === 'parceiro' && !fParceiro) {
       toast.error('Selecione um parceiro no filtro acima antes de gerar este relatório')
@@ -235,11 +236,11 @@ export default function ReportsPage({ profile, can }: Props) {
         doc.setTextColor(20,20,20); doc.setFontSize(12); doc.setFont('helvetica','bold')
         doc.text(`Contas a Pagar (${(data||[]).length})`, 12, startY)
         doc.setFontSize(9); doc.setTextColor(245,158,11)
-        doc.text(`Pendente: R$${totalPend.toFixed(2)} | Pago: R$${totalPaid.toFixed(2)}`, 12, startY+8)
+        doc.text(`Pendente: R$ ${fmtR(totalPend)} | Pago: R$ ${fmtR(totalPaid)}`, 12, startY+8)
         autoTable(doc, {
           startY: startY+14,
           head: [['Vencimento','Valor','Status','Nº Doc','Pagamento']],
-          body: (data||[]).map((b:any) => [fmtD(b.due_date),`R$${Number(b.valor||0).toFixed(2)}`,b.status||'—',b.numero_documento||'—',fmtD(b.data_recebimento)]),
+          body: (data||[]).map((b:any) => [fmtD(b.due_date),`R$ ${fmtR(b.valor)}`,b.status||'—',b.numero_documento||'—',fmtD(b.data_recebimento)]),
           styles: { fontSize:7, cellPadding:2 },
           headStyles: { fillColor:[6,13,26], textColor:[255,255,255] },
           alternateRowStyles: { fillColor:[241,245,249] },
@@ -261,14 +262,14 @@ export default function ReportsPage({ profile, can }: Props) {
         let q = supabase.from('wood_entries').select('*').order('data_entrada',{ascending:false})
         q = buildDateFilter(q, 'data_entrada')
         const { data } = await q
-        const rows = (data||[]).map((r:any) => [fmtD(r.data_entrada), r.supplier_name||'—', r.wood_class||'—', `${r.weight_tons||0} t`, `${r.volume_m3||0} m³`, `R$ ${(r.unit_value||0).toFixed(2)}`, `R$ ${(r.total_value||0).toFixed(2)}`, r.driver||'—', r.plate||'—'])
+        const rows = (data||[]).map((r:any) => [fmtD(r.data_entrada), r.supplier_name||'—', r.wood_class||'—', `${r.weight_tons||0} t`, `${r.volume_m3||0} m³`, `R$ ${fmtR(r.unit_value||0)}`, `R$ ${fmtR(r.total_value||0)}`, r.driver||'—', r.plate||'—'])
         addTable(doc, 'Entrada de Madeira', ['Data','Fornecedor','Classe','Peso','Volume','Preço/t','Valor Total','Motorista','Placa'], rows)
 
       } else if (moduleId === 'sales') {
         let q = supabase.from('sales_orders').select('*').order('sale_date',{ascending:false})
         q = buildDateFilter(q, 'sale_date')
         const { data } = await q
-        const rows = (data||[]).map((r:any) => [fmtD(r.sale_date), r.client_name||'—', r.product_name||'—', `${r.weight_tons||0} t`, `R$ ${(r.total_value||0).toFixed(2)}`, r.payment_status==='pago'?'Pago':r.payment_status==='pendente'?'Pendente':'—', r.driver||'—', r.plate||'—', r.invoice||'—'])
+        const rows = (data||[]).map((r:any) => [fmtD(r.sale_date), r.client_name||'—', r.product_name||'—', `${r.weight_tons||0} t`, `R$ ${fmtR(r.total_value||0)}`, r.payment_status==='pago'?'Pago':r.payment_status==='pendente'?'Pendente':'—', r.driver||'—', r.plate||'—', r.invoice||'—'])
         addTable(doc, 'Pedidos de Venda', ['Data','Cliente','Produto','Peso','Valor','Pagamento','Motorista','Placa','NF'], rows)
 
       } else if (moduleId === 'epi') {
@@ -288,7 +289,7 @@ export default function ReportsPage({ profile, can }: Props) {
 
       } else if (moduleId === 'energy') {
         const { data } = await supabase.from('energy_records').select('*').order('record_date',{ascending:false})
-        const rows = (data||[]).map((r:any) => [r.record_date, r.source, r.sector||'Geral', `${r.reading||0} ${r.unit||'kWh'}`, `R$ ${(r.cost||0).toFixed(2)}`, r.notes||''])
+        const rows = (data||[]).map((r:any) => [r.record_date, r.source, r.sector||'Geral', `${r.reading||0} ${r.unit||'kWh'}`, `R$ ${fmtR(r.cost||0)}`, r.notes||''])
         addTable(doc, 'Consumo de Energia', ['Data','Fonte','Setor','Leitura/Consumo','Custo','Obs'], rows)
 
       } else if (moduleId === 'parceiro') {
@@ -325,7 +326,7 @@ export default function ReportsPage({ profile, can }: Props) {
         autoTable(doc, {
           startY: y+3,
           head: [['Data','Peso (t)','Valor']],
-          body: compras.map((c:any)=>[fmtD(c.purchase_date||c.data_entrada), `${c.weight_tons||0}`, `R$ ${(c.total_value||0).toFixed(2)}`]),
+          body: compras.map((c:any)=>[fmtD(c.purchase_date||c.data_entrada), `${c.weight_tons||0}`, `R$ ${fmtR(c.total_value||0)}`]),
           styles: { fontSize:7, cellPadding:2 },
           headStyles: { fillColor:[6,13,26], textColor:[255,255,255] },
           alternateRowStyles: { fillColor:[241,245,249] },
@@ -339,7 +340,7 @@ export default function ReportsPage({ profile, can }: Props) {
         autoTable(doc, {
           startY: y+3,
           head: [['Data','Produto','Peso (t)','Valor','Motorista','Placa']],
-          body: vendas.map((v:any)=>[fmtD(v.sale_date), v.product_name||'—', `${v.weight_tons||0}`, `R$ ${(v.total_value||0).toFixed(2)}`, v.driver||'—', v.plate||'—']),
+          body: vendas.map((v:any)=>[fmtD(v.sale_date), v.product_name||'—', `${v.weight_tons||0}`, `R$ ${fmtR(v.total_value||0)}`, v.driver||'—', v.plate||'—']),
           styles: { fontSize:7, cellPadding:2 },
           headStyles: { fillColor:[6,13,26], textColor:[255,255,255] },
           alternateRowStyles: { fillColor:[241,245,249] },
@@ -354,15 +355,15 @@ export default function ReportsPage({ profile, can }: Props) {
         doc.setFontSize(9); doc.setTextColor(20,20,20)
         if (saldo) {
           const linhas = [
-            `Total Compras: R$ ${(+saldo.total_compras||0).toFixed(2)}`,
-            `Total Vendas: R$ ${(+saldo.total_vendas||0).toFixed(2)}`,
-            `Recebido: R$ ${(+saldo.total_recebido||0).toFixed(2)}  |  Pago: R$ ${(+saldo.total_pago||0).toFixed(2)}`,
-            `Créditos: R$ ${(+saldo.total_creditos||0).toFixed(2)}  |  Débitos: R$ ${(+saldo.total_debitos||0).toFixed(2)}`,
+            `Total Compras: R$ ${fmtR(+saldo.total_compras||0)}`,
+            `Total Vendas: R$ ${fmtR(+saldo.total_vendas||0)}`,
+            `Recebido: R$ ${fmtR(+saldo.total_recebido||0)}  |  Pago: R$ ${fmtR(+saldo.total_pago||0)}`,
+            `Créditos: R$ ${fmtR(+saldo.total_creditos||0)}  |  Débitos: R$ ${fmtR(+saldo.total_debitos||0)}`,
           ]
           linhas.forEach(l => { doc.text(l, 12, y); y += 5 })
           doc.setFont('helvetica','bold'); doc.setFontSize(11)
           doc.setTextColor(saldo.saldo_final>=0?34:239, saldo.saldo_final>=0?197:68, saldo.saldo_final>=0?94:68)
-          doc.text(`SALDO: R$ ${(+saldo.saldo_final||0).toFixed(2)} (${saldo.situacao})`, 12, y)
+          doc.text(`SALDO: R$ ${fmtR(+saldo.saldo_final||0)} (${saldo.situacao})`, 12, y)
           y += 10
         } else {
           doc.text('Sem movimentação de conta corrente para este parceiro.', 12, y)
@@ -443,11 +444,11 @@ export default function ReportsPage({ profile, can }: Props) {
         doc.setFontSize(11); doc.setTextColor(0,212,255)
         doc.text(`Pagamentos do Período (${pagamentos.length})`, 12, y)
         doc.setFontSize(8); doc.setTextColor(245,158,11)
-        doc.text(`Pendente: R$ ${totalPend.toFixed(2)}  |  Pago: R$ ${totalPaid.toFixed(2)}`, 12, y+5)
+        doc.text(`Pendente: R$ ${fmtR(totalPend)}  |  Pago: R$ ${fmtR(totalPaid)}`, 12, y+5)
         autoTable(doc, {
           startY: y+9,
           head: [['Vencimento','Descrição','Centro de Custo','Valor','Status']],
-          body: pagamentos.map((p:any) => [fmtD(p.due_date), p.descricao||'—', p.cost_centers ? `${p.cost_centers.codigo} - ${p.cost_centers.descricao}` : '—', `R$ ${(+p.valor||0).toFixed(2)}`, p.status==='paid'?'Pago':p.status==='pending'?'Pendente':p.status==='overdue'?'Vencido':p.status||'—']),
+          body: pagamentos.map((p:any) => [fmtD(p.due_date), p.descricao||'—', p.cost_centers ? `${p.cost_centers.codigo} - ${p.cost_centers.descricao}` : '—', `R$ ${fmtR(+p.valor||0)}`, p.status==='paid'?'Pago':p.status==='pending'?'Pendente':p.status==='overdue'?'Vencido':p.status||'—']),
           styles: { fontSize:7, cellPadding:2 },
           headStyles: { fillColor:[6,13,26], textColor:[255,255,255] },
           alternateRowStyles: { fillColor:[241,245,249] },
@@ -469,7 +470,7 @@ export default function ReportsPage({ profile, can }: Props) {
         autoTable(doc, {
           startY: y+3,
           head: [['Código','Descrição','Grupo','Qtd. Lançamentos','Total']],
-          body: porCentro.map((c:any)=>[c.codigo, c.descricao, c.grupo, `${c.qtd}`, `R$ ${c.total.toFixed(2)}`]),
+          body: porCentro.map((c:any)=>[c.codigo, c.descricao, c.grupo, `${c.qtd}`, `R$ ${fmtR(c.total)}`]),
           styles: { fontSize:7, cellPadding:2 },
           headStyles: { fillColor:[6,13,26], textColor:[255,255,255] },
           alternateRowStyles: { fillColor:[241,245,249] },

@@ -476,7 +476,7 @@ export default function SalesPage({ profile, can }: Props) {
       var resCC = await Promise.all([qRecVen, qSaldoVen]);
       var rRecVen = resCC[0]; var rSaldoVen = resCC[1];
       var recebRowsVen = (rRecVen && rRecVen.data ? rRecVen.data : []).map(function(p){
-        return [ p.payment_date ? new Date(p.payment_date+'T00:00:00').toLocaleDateString('pt-BR') : '-', p.client_name || '-', p.method || '-', 'R$ ' + (Number(p.value)||0).toFixed(2) ];
+        return [ p.payment_date ? new Date(p.payment_date+'T00:00:00').toLocaleDateString('pt-BR') : '-', p.client_name || '-', p.method || '-', money(Number(p.value)||0) ];
       });
       if (recebRowsVen.length > 0) {
         y = (doc).lastAutoTable ? (doc).lastAutoTable.finalY + 8 : y + 8;
@@ -493,12 +493,12 @@ export default function SalesPage({ profile, can }: Props) {
       doc.text('Resumo de Conta Corrente', 12, y);
       y += 6;
       doc.setFontSize(9); doc.setFont('helvetica','normal'); doc.setTextColor(20,20,20);
-      doc.text('Total Vendido: R$ ' + (repVal||0).toFixed(2), 12, y); y += 5;
-      doc.text('Total Recebido: R$ ' + totalRecVen.toFixed(2), 12, y); y += 5;
+      doc.text('Total Vendido: ' + money(repVal||0), 12, y); y += 5;
+      doc.text('Total Recebido: ' + money(totalRecVen), 12, y); y += 5;
       if (saldoVen.length > 0) {
         var totReceber = saldoVen.reduce(function(s,x){return s + (Number(x.a_receber)||0);}, 0);
         doc.setFont('helvetica','bold');
-        doc.text('SALDO A RECEBER: R$ ' + totReceber.toFixed(2), 12, y); y += 6;
+        doc.text('SALDO A RECEBER: ' + money(totReceber), 12, y); y += 6;
       }
 
 
