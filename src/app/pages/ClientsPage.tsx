@@ -34,13 +34,18 @@ export default function ClientsPage({ profile, can }: Props) {
     toast.success('Excluído'); load()
   }
 
-  const filtered = clients.filter(c => !search || c.razao_social?.toLowerCase().includes(search.toLowerCase()) || (c.nome_fantasia||'').toLowerCase().includes(search.toLowerCase()))
+  const filtered = clients.filter(c => {
+    const q = search.toLowerCase()
+    if (!q) return true
+    const campos = [c.razao_social, c.nome_fantasia, c.documento, c.cnpj, c.cpf, c.telefone, c.email, c.cidade, c.estado, c.endereco].map(x => (x===null||x===undefined)?'':String(x).toLowerCase())
+    return campos.some(x => x.includes(q))
+  })
 
   return (
     <div>
       {dialog}
       <div className="flex gap-2 mb-3">
-        <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="🔍 Buscar cliente..."
+        <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="🔍 Buscar por nome, documento, telefone, cidade, email..."
           className="flex-1 rounded-xl px-3 py-2 text-xs outline-none"
           style={{background:'var(--s1)',border:'1px solid var(--bd)',color:'var(--t1)',fontFamily:'Sora,system-ui,sans-serif'}}
           onFocus={e=>e.target.style.borderColor='var(--cy)'} onBlur={e=>e.target.style.borderColor='var(--bd)'} />

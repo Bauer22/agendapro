@@ -23,6 +23,7 @@ export default function FuelPage({ profile, can }: Props) {
   const [fornecedores, setFornecedores] = useState<any[]>([])
   const [modal, setModal] = useState(false)
   const [editing, setEditing] = useState<any>({})
+  const [buscaFuel, setBuscaFuel] = useState('')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   // filtros do relatório
@@ -359,9 +360,14 @@ export default function FuelPage({ profile, can }: Props) {
       {loading ? <Empty icon="⏳" text="Carregando..." /> : <>
 
         {/* ═══ ABASTECIMENTOS ═══ */}
-        {tab==='abast' && (records.length===0 ? <Empty icon="⛽" text="Nenhum abastecimento registrado." /> : (
+        {tab==='abast' && (records.length===0 ? <Empty icon="⛽" text="Nenhum abastecimento registrado." /> : (() => {
+          const t = buscaFuel.trim().toLowerCase()
+          const lst = !t ? records : records.filter((r:any)=>[r.record_date,r.veiculo_placa,r.machine_name,r.driver_name,r.liters,r.km,r.hm,r.fuel_type,r.total_value].map(x=>(x==null)?'':String(x).toLowerCase()).some(c=>c.includes(t)))
+          return (
           <div className="flex flex-col gap-2">
-            {records.map(r => (
+            <input value={buscaFuel} onChange={ev=>setBuscaFuel(ev.target.value)} placeholder="🔍 Buscar por data, placa, máquina, motorista, litros..." className="w-full rounded-xl px-3 py-2 text-xs outline-none mb-1" style={{background:'var(--s1)',border:'1px solid var(--bd)',color:'var(--t1)',fontFamily:'Sora,system-ui,sans-serif'}} />
+            {t && <div style={{fontSize:'9px',color:'var(--t3)',marginBottom:'4px'}}>{lst.length} resultado(s)</div>}
+            {lst.map(r => (
               <div key={r.id} className="rounded-xl p-3" style={{background:'var(--s1)',border:'1px solid var(--bd)'}}>
                 <div className="flex justify-between items-start">
                   <div className="flex-1">
@@ -386,12 +392,18 @@ export default function FuelPage({ profile, can }: Props) {
               </div>
             ))}
           </div>
-        ))}
+          )
+        })())}
 
         {/* ═══ ENTRADAS ═══ */}
-        {tab==='entradas' && (entries.length===0 ? <Empty icon="📥" text="Nenhuma compra de combustível." /> : (
+        {tab==='entradas' && (entries.length===0 ? <Empty icon="📥" text="Nenhuma compra de combustível." /> : (() => {
+          const t = buscaFuel.trim().toLowerCase()
+          const lst = !t ? entries : entries.filter((e:any)=>[e.entry_date,e.supplier_name,e.fuel_type,e.liters,e.total_value,e.unit_price].map(x=>(x==null)?'':String(x).toLowerCase()).some(c=>c.includes(t)))
+          return (
           <div className="flex flex-col gap-2">
-            {entries.map(e => (
+            <input value={buscaFuel} onChange={ev=>setBuscaFuel(ev.target.value)} placeholder="🔍 Buscar por data, fornecedor, litros, valor..." className="w-full rounded-xl px-3 py-2 text-xs outline-none mb-1" style={{background:'var(--s1)',border:'1px solid var(--bd)',color:'var(--t1)',fontFamily:'Sora,system-ui,sans-serif'}} />
+            {t && <div style={{fontSize:'9px',color:'var(--t3)',marginBottom:'4px'}}>{lst.length} resultado(s)</div>}
+            {lst.map(e => (
               <div key={e.id} className="rounded-xl p-3" style={{background:'var(--s1)',border:'1px solid var(--bd)'}}>
                 <div className="flex justify-between items-start">
                   <div className="flex-1">
@@ -413,12 +425,18 @@ export default function FuelPage({ profile, can }: Props) {
               </div>
             ))}
           </div>
-        ))}
+          )
+        })())}
 
         {/* ═══ DESPESAS ═══ */}
-        {tab==='despesas' && (expenses.length===0 ? <Empty icon="🔧" text="Nenhuma despesa registrada." /> : (
+        {tab==='despesas' && (expenses.length===0 ? <Empty icon="🔧" text="Nenhuma despesa registrada." /> : (() => {
+          const t = buscaFuel.trim().toLowerCase()
+          const lst = !t ? expenses : expenses.filter((x:any)=>[x.expense_date,x.veiculo_placa,x.machine_name,x.description,x.category,x.total_value].map(v=>(v==null)?'':String(v).toLowerCase()).some(c=>c.includes(t)))
+          return (
           <div className="flex flex-col gap-2">
-            {expenses.map(x => (
+            <input value={buscaFuel} onChange={ev=>setBuscaFuel(ev.target.value)} placeholder="🔍 Buscar por data, placa, descrição, categoria..." className="w-full rounded-xl px-3 py-2 text-xs outline-none mb-1" style={{background:'var(--s1)',border:'1px solid var(--bd)',color:'var(--t1)',fontFamily:'Sora,system-ui,sans-serif'}} />
+            {t && <div style={{fontSize:'9px',color:'var(--t3)',marginBottom:'4px'}}>{lst.length} resultado(s)</div>}
+            {lst.map(x => (
               <div key={x.id} className="rounded-xl p-3" style={{background:'var(--s1)',border:'1px solid var(--bd)'}}>
                 <div className="flex justify-between items-start">
                   <div className="flex-1">
@@ -440,7 +458,8 @@ export default function FuelPage({ profile, can }: Props) {
               </div>
             ))}
           </div>
-        ))}
+          )
+        })())}
 
         {/* ═══ POR PLACA ═══ */}
         {tab==='placas' && (placaStats.length===0 ? <Empty icon="🚛" text="Nenhum abastecimento registrado." /> : (

@@ -19,6 +19,7 @@ export default function ProductionPage({ profile, can }: Props) {
   const [woodEntries, setWoodEntries] = useState<any[]>([])
   const [modal, setModal] = useState(false)
   const [editing, setEditing] = useState<any>({})
+  const [buscaProd, setBuscaProd] = useState('')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [rFrom, setRFrom] = useState(''); const [rTo, setRTo] = useState('')
@@ -192,9 +193,20 @@ export default function ProductionPage({ profile, can }: Props) {
       {loading ? <Empty icon="⏳" text="Carregando..." /> : <>
 
         {/* ═══ LANÇAMENTOS ═══ */}
-        {tab==='lancamentos' && (records.length===0 ? <Empty icon="🏭" text="Nenhuma produção lançada." /> : (
+        {tab==='lancamentos' && (records.length===0 ? <Empty icon="🏭" text="Nenhuma produção lançada." /> : (() => {
+          const termo = buscaProd.trim().toLowerCase()
+          const recordsFiltrados = !termo ? records : records.filter((r:any) => {
+            const campos = [r.prod_date, r.shift, r.wood_class, r.produced_m3, r.tank_m3, r.cavaco_m3, r.operator].map(x => (x===null||x===undefined)?'':String(x).toLowerCase())
+            return campos.some(c => c.includes(termo))
+          })
+          return (
           <div className="flex flex-col gap-2">
-            {records.map(r => {
+            <input value={buscaProd} onChange={ev=>setBuscaProd(ev.target.value)}
+              placeholder="🔍 Buscar por data, turno, classe, m³..."
+              className="w-full rounded-xl px-3 py-2 text-xs outline-none mb-1"
+              style={{background:'var(--s1)',border:'1px solid var(--bd)',color:'var(--t1)',fontFamily:'Sora,system-ui,sans-serif'}} />
+            {termo && <div style={{fontSize:'9px',color:'var(--t3)',marginBottom:'4px'}}>{recordsFiltrados.length} resultado(s)</div>}
+            {recordsFiltrados.map(r => {
               const c = calc(r)
               return (
                 <div key={r.id} className="rounded-xl p-3" style={{background:'var(--s1)',border:'1px solid var(--bd)'}}>
@@ -223,7 +235,8 @@ export default function ProductionPage({ profile, can }: Props) {
               )
             })}
           </div>
-        ))}
+          )
+        })())}
 
         {/* ═══ RELATÓRIO ═══ */}
         {tab==='relatorio' && (

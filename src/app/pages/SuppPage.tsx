@@ -43,13 +43,18 @@ export default function SuppPage({ profile, can }: Props) {
     toast.success('Excluído'); load()
   }
 
-  const filtered = supps.filter(s => !search || s.name.toLowerCase().includes(search.toLowerCase()) || (s.city||'').toLowerCase().includes(search.toLowerCase()))
+  const filtered = supps.filter(s => {
+    const q = search.toLowerCase()
+    if (!q) return true
+    const campos = [s.name, s.city, s.phone, s.email, s.cnpj, s.razao_social, s.state, s.address].map(x => (x===null||x===undefined)?'':String(x).toLowerCase())
+    return campos.some(x => x.includes(q))
+  })
 
   return (
     <div>
       {dialog}
       <div className="flex gap-2 mb-3">
-        <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="🔍 Buscar fornecedor..."
+        <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="🔍 Buscar por nome, cidade, telefone, email, CNPJ..."
           className="flex-1 rounded-xl px-3 py-2 text-xs outline-none"
           style={{background:'var(--s1)',border:'1px solid var(--bd)',color:'var(--t1)',fontFamily:'Sora,system-ui,sans-serif'}}
           onFocus={e=>e.target.style.borderColor='var(--cy)'} onBlur={e=>e.target.style.borderColor='var(--bd)'} />
