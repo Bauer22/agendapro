@@ -232,7 +232,6 @@ export default function SalesPage({ profile, can }: Props) {
   }
 
   async function deleteLancamento(origem: string, id: string) {
-    if (!['client_payments','supplier_payments','account_adjustments'].includes(origem)) { toast.error('Este lancamento so pode ser alterado na tela de origem'); return }
     const ok = await confirm('Excluir este lançamento? Essa ação não pode ser desfeita.')
     if (!ok) return
     const { error } = await supabase.from(origem).delete().eq('id', id)
@@ -631,7 +630,7 @@ export default function SalesPage({ profile, can }: Props) {
                           return L.map((l:any,j:number)=>{
                             acum += (+l.credito||0) - (+l.debito||0)
                             const cor = l.tipo==='VENDA'?'var(--cy)':(l.tipo==='COMPRA MADEIRA'||l.tipo==='COMPRA PINUS')?'var(--rd)':l.tipo==='CRÉDITO'?'var(--am)':l.tipo==='DÉBITO'?'var(--pp)':'var(--gn)'
-                            const podeExcluir = ['client_payments','supplier_payments','account_adjustments'].includes(l.origem)
+                            const podeExcluir = l.tipo==='RECEBIMENTO' || l.tipo==='PAGAMENTO'
                             return (
                               <div key={j} className="grid px-2 py-1.5" style={{gridTemplateColumns: podeExcluir?'50px 1fr 62px 62px 22px':'50px 1fr 62px 62px',background:'var(--s1)',borderTop:'1px solid var(--bd)',fontSize:'9px'}}>
                                 <span style={{color:'var(--t3)'}}>{fmtD(l.data)?.slice(0,5)}</span>
