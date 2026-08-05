@@ -28,6 +28,7 @@ export default function SalesPage({ profile, can }: Props) {
   const [newClient, setNewClient] = useState<any>({})
   const [newProduct, setNewProduct] = useState<any>({})
   const [tab, setTab]           = useState<'open'|'all'|'relatorio'|'extrato'|'autoriz'>('open')
+  const [buscaVendas, setBuscaVendas] = useState('')
   const [saldos, setSaldos]     = useState<any[]>([])
   const [extrato, setExtrato]   = useState<any[]>([])
   const [lancs, setLancs]       = useState<any[]>([])
@@ -927,9 +928,24 @@ export default function SalesPage({ profile, can }: Props) {
       )}
 
       {tab !== 'relatorio' && tab !== 'extrato' && (loading ? <Empty icon="⏳" text="Carregando..." /> :
-       orders.length === 0 ? <Empty icon="🛒" text="Nenhum romaneio encontrado." /> : (
+       orders.length === 0 ? <Empty icon="🛒" text="Nenhum romaneio encontrado." /> : (() => {
+        const termo = buscaVendas.trim().toLowerCase()
+        const ordersFiltrados = !termo ? orders : orders.filter((o:any) => {
+          const campos = [
+            o.romaneio_num, o.client_name, o.driver, o.plate, o.product_name,
+            o.invoice, o.sale_date, o.total_value, o.payment_status,
+            o.weight_tons, o.volume_m3
+          ].map(x => (x===null||x===undefined) ? '' : String(x).toLowerCase())
+          return campos.some(c => c.includes(termo))
+        })
+        return (
         <div className="flex flex-col gap-2">
-          {orders.map(o => (
+          <input value={buscaVendas} onChange={e=>setBuscaVendas(e.target.value)}
+            placeholder="🔍 Buscar por cliente, motorista, placa, produto, NF, data, valor..."
+            className="w-full rounded-xl px-3 py-2 text-xs outline-none mb-1"
+            style={{background:'var(--s2)',border:'1px solid var(--bd)',color:'var(--t1)',fontFamily:'Sora,system-ui,sans-serif'}} />
+          {termo && <div style={{fontSize:'9px',color:'var(--t3)',marginBottom:'4px'}}>{ordersFiltrados.length} resultado(s)</div>}
+          {ordersFiltrados.map(o => (
             <div key={o.id} onClick={() => setView(o)}
               className="rounded-xl p-3 cursor-pointer"
               style={{ background:'var(--s1)', border:`1px solid ${o.status==='cancelled'?'rgba(239,68,68,.3)':'var(--bd)'}` }}>
@@ -970,7 +986,8 @@ export default function SalesPage({ profile, can }: Props) {
             </div>
           ))}
         </div>
-      ))}
+        )
+      })())}
 
       {/* Detalhe */}
       <Modal open={!!view} onClose={() => setView(null)} title={`Romaneio Nº ${view?.romaneio_num || ''}`}>
