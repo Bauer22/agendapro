@@ -32,6 +32,8 @@ export default function SalesPage({ profile, can }: Props) {
   const [extrato, setExtrato]   = useState<any[]>([])
   const [lancs, setLancs]       = useState<any[]>([])
   const [payModal, setPayModal] = useState(false)
+  const [editLancModal, setEditLancModal] = useState(false)
+  const [editLanc, setEditLanc] = useState<any>({})
   const [newPay, setNewPay]     = useState<any>({})
   const [payTipo, setPayTipo]   = useState<'receber'|'pagar'>('receber')
   const [verExtrato, setVerExtrato] = useState<string|null>(null)
@@ -241,6 +243,29 @@ export default function SalesPage({ profile, can }: Props) {
     loadExtrato()
   }
 
+  function editarLancamento(l: any) {
+    if (!['client_payments','supplier_payments','account_adjustments'].includes(l.origem)) { toast.error('Este lancamento so pode ser alterado na tela de origem'); return }
+    const valorAtual = (+l.credito !== 0 ? +l.credito : +l.debito)
+    setEditLanc({ id: l.id, origem: l.origem, tipo: l.tipo, data: l.data, valor: valorAtual, descricao: l.descricao || '' })
+    setEditLancModal(true)
+  }
+
+  async function saveEditLanc() {
+    if (saving) return
+    if (!editLanc.valor || parseFloat(editLanc.valor) <= 0) { toast.error('Informe um valor valido'); return }
+    setSaving(true)
+    const campoData = editLanc.origem === 'account_adjustments' ? 'adj_date' : 'payment_date'
+    const patch: any = {}
+    patch[campoData] = editLanc.data
+    patch['value'] = parseFloat(editLanc.valor)
+    if (editLanc.origem === 'account_adjustments') { patch['descricao'] = editLanc.descricao }
+    const { error } = await supabase.from(editLanc.origem).update(patch).eq('id', editLanc.id)
+    setSaving(false)
+    if (error) { toast.error('Erro ao salvar: ' + error.message); return }
+    toast.success('Lancamento atualizado')
+    setEditLancModal(false); setEditLanc({}); loadExtrato()
+  }
+
   // Lista de parceiros para o modal (clientes + fornecedores)
   const [parceiros, setParceiros] = useState<any[]>([])
   function loadParceiros() {
@@ -438,7 +463,8 @@ export default function SalesPage({ profile, can }: Props) {
           o.total_value?money(o.total_value):'—', o.payment_status==='pago'?'Pago':o.payment_status==='pendente'?'Pend.':'—']),
         theme:'striped', headStyles:{fillColor:[30,58,110]}, styles:{fontSize:7},
       })
-      y = (doc).lastAutoTable.finalY + 8; var motMap = {}; rep.forEach(function(o){ var k = o.driver || 'Nao informado'; if(!motMap[k]) motMap[k]={cargas:0,tons:0,m3:0}; motMap[k].cargas++; motMap[k].tons += parseFloat(o.weight_tons)||0; motMap[k].m3 += parseFloat(o.volume_m3)||0; }); var motRows = Object.keys(motMap).map(function(k){ var d=motMap[k]; return [k, String(d.cargas), d.tons.toFixed(3), d.m3.toFixed(2), (d.cargas>0?(d.tons/d.cargas):0).toFixed(2)]; }).sort(function(a,b){return parseFloat(b[2])-parseFloat(a[2]);}); if(motRows.length>0){ autoTable(doc, { startY: y, head: [['Motorista','Viagens','Toneladas','m3','Media t/viagem']], body: motRows, theme:'grid', headStyles:{fillColor:[34,197,94]}, styles:{fontSize:8} }); }      // -- Conta Corrente: recebimentos do periodo + saldo real --
+      y = (doc).lastAutoTable.finalY + 8; var motMap = {}; rep.forEach(function(o){ var k = o.driver || 'Nao informado'; if(!motMap[k]) motMap[k]={cargas:0,tons:0,m3:0}; motMap[k].cargas++; motMap[k].tons += parseFloat(o.weight_tons)||0; motMap[k].m3 += parseFloat(o.volume_m3)||0; }); var motRows = Object.keys(motMap).map(function(k){ var d=motMap[k]; return [k, String(d.cargas), d.tons.toFixed(3), d.m3.toFixed(2), (d.cargas>0?(d.tons/d.cargas):0).toFixed(2)]; }).sort(function(a,b){return parseFloat(b[2])-parseFloat(a[2]);}); if(motRows.length>0){ autoTable(doc, { startY: y, head: [['Motorista','Viagens','Toneladas','m3','Media t/viagem']], body: motRows, theme:'grid', headStyles:{fillColor:[34,197,94]}, styles:{fontSize:8} }); }
+      // -- Conta Corrente: recebimentos do periodo + saldo real --
       var nomeCliVen = rCli ? (clients.find(function(x){return x.id===rCli;})||{}).name : null;
       var qRecVen = supabase.from('client_payments').select('*').order('payment_date',{ascending:false});
       if (nomeCliVen) qRecVen = qRecVen.ilike('client_name', nomeCliVen);
@@ -633,7 +659,7 @@ export default function SalesPage({ profile, can }: Props) {
                             const cor = l.tipo==='VENDA'?'var(--cy)':(l.tipo==='COMPRA MADEIRA'||l.tipo==='COMPRA PINUS')?'var(--rd)':l.tipo==='CRÉDITO'?'var(--am)':l.tipo==='DÉBITO'?'var(--pp)':'var(--gn)'
                             const podeExcluir = ['client_payments','supplier_payments','account_adjustments'].includes(l.origem)
                             return (
-                              <div key={j} className="grid px-2 py-1.5" style={{gridTemplateColumns: podeExcluir?'50px 1fr 62px 62px 22px':'50px 1fr 62px 62px',background:'var(--s1)',borderTop:'1px solid var(--bd)',fontSize:'9px'}}>
+                              <div key={j} className="grid px-2 py-1.5" style={{gridTemplateColumns: podeExcluir?'50px 1fr 62px 62px 44px':'50px 1fr 62px 62px',background:'var(--s1)',borderTop:'1px solid var(--bd)',fontSize:'9px'}}>
                                 <span style={{color:'var(--t3)'}}>{fmtD(l.data)?.slice(0,5)}</span>
                                 <div style={{overflow:'hidden'}}>
                                   <div style={{fontWeight:700,color:cor}}>{l.tipo}</div>
@@ -647,6 +673,11 @@ export default function SalesPage({ profile, can }: Props) {
                                 <span style={{textAlign:'right',color:+l.debito!==0?'var(--rd)':'var(--t3)'}}>
                                   {+l.debito!==0?(+l.debito).toLocaleString('pt-BR',{maximumFractionDigits:0}):'—'}
                                 </span>
+                                {podeExcluir && (
+                                  <span onClick={()=>editarLancamento(l)}
+                                    style={{textAlign:'center',color:'var(--cy)',cursor:'pointer',fontWeight:700}}
+                                    title="Editar">✏️</span>
+                                )}
                                 {podeExcluir && (
                                   <span onClick={()=>deleteLancamento(l.origem, l.id)}
                                     style={{textAlign:'center',color:'var(--rd)',cursor:'pointer',fontWeight:700}}
@@ -694,6 +725,18 @@ export default function SalesPage({ profile, can }: Props) {
           )}
 
           {/* Modal de lançamento */}
+          <Modal open={editLancModal} onClose={()=>setEditLancModal(false)} title="✏️ Editar Lançamento"
+            footer={<><Btn onClick={()=>setEditLancModal(false)}>Cancelar</Btn><Btn onClick={saveEditLanc} variant="primary" size="md" disabled={saving}>{saving?'Salvando...':'Salvar'}</Btn></>}>
+            <div style={{fontSize:'11px',color:'var(--t3)',marginBottom:'10px'}}>Tipo: <b style={{color:'var(--t1)'}}>{editLanc.tipo}</b></div>
+            <div className="grid grid-cols-2 gap-x-3">
+              <Input label="Data *" value={editLanc.data} onChange={(v:string)=>setEditLanc((e:any)=>({...e,data:v}))} type="date" />
+              <Input label="Valor R$ *" value={editLanc.valor} onChange={(v:string)=>setEditLanc((e:any)=>({...e,valor:v}))} type="number" placeholder="0.00" />
+            </div>
+            {editLanc.origem==='account_adjustments' && (
+              <Input label="Descrição" value={editLanc.descricao} onChange={(v:string)=>setEditLanc((e:any)=>({...e,descricao:v}))} placeholder="Descrição do ajuste" />
+            )}
+          </Modal>
+
           <Modal open={payModal} onClose={()=>setPayModal(false)} title={payTipo==='receber'?'💵 Registrar Recebimento':'💸 Registrar Pagamento'}
             footer={<><Btn onClick={()=>setPayModal(false)}>Cancelar</Btn><Btn onClick={savePayment} variant="primary" size="md" disabled={saving}>{saving?'Salvando...':'Salvar'}</Btn></>}>
 
