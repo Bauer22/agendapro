@@ -217,7 +217,8 @@ export default function OSPage({ profile, can }: Props) {
 
   const filtered = orders.filter(o => {
     const q = search.toLowerCase()
-    const matchQ = !q || o.title?.toLowerCase().includes(q) || o.number?.toLowerCase().includes(q) || o.machine_name?.toLowerCase().includes(q)
+    const campos = [o.title, o.number, o.machine_name, o.resp_name, o.status, o.priority, o.sector, o.open_date, o.due_date].map(x => (x===null||x===undefined)?'':String(x).toLowerCase())
+    const matchQ = !q || campos.some(c => c.includes(q))
     const matchF = !filter || o.machine_id === filter
     return matchQ && matchF
   })
@@ -231,7 +232,7 @@ export default function OSPage({ profile, can }: Props) {
     <div>
       {dialog}
       <div className="flex gap-2 mb-3">
-        <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="🔍 Buscar OS..."
+        <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="🔍 Buscar por título, número, máquina, responsável, status..."
           className="flex-1 rounded-xl px-3 py-2 text-xs outline-none"
           style={{background:'var(--s1)',border:'1px solid var(--bd)',color:'var(--t1)',fontFamily:'Sora,system-ui,sans-serif'}}
           onFocus={e=>e.target.style.borderColor='var(--cy)'} onBlur={e=>e.target.style.borderColor='var(--bd)'} />

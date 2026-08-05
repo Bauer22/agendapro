@@ -158,7 +158,8 @@ export default function PartsPage({ profile, can }: Props) {
   const filteredParts = parts.filter(p => {
     const q = search.toLowerCase()
     const matchCat = activeCategory === 'Todos' || p.category === activeCategory
-    const matchSearch = !q || p.name.toLowerCase().includes(q) || (p.code||'').toLowerCase().includes(q)
+    const campos = [p.name, p.code, p.category, p.location, p.unit, p.stock, p.min_stock, p.unit_value].map(x => (x===null||x===undefined)?'':String(x).toLowerCase())
+    const matchSearch = !q || campos.some(c => c.includes(q))
     return matchCat && matchSearch
   })
 
@@ -205,7 +206,7 @@ export default function PartsPage({ profile, can }: Props) {
 
           {/* Search + actions */}
           <div className="flex gap-2 mb-2">
-            <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="🔍 Buscar peça..."
+            <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="🔍 Buscar por nome, código, categoria, local..."
               className="flex-1 rounded-xl px-3 py-2 text-xs outline-none"
               style={{background:'var(--s1)',border:'1px solid var(--bd)',color:'var(--t1)',fontFamily:'Sora,system-ui,sans-serif'}}
               onFocus={e=>e.target.style.borderColor='var(--cy)'} onBlur={e=>e.target.style.borderColor='var(--bd)'} />

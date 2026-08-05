@@ -103,14 +103,17 @@ export default function MachPage({ profile, can }: Props) {
 
   const filtered = machines.filter(m => {
     const q = search.toLowerCase()
-    return (cat==='all'||m.category===cat) && (!q||m.name.toLowerCase().includes(q)||(m.code||'').toLowerCase().includes(q))
+    if (!(cat==='all'||m.category===cat)) return false
+    if (!q) return true
+    const campos = [m.name, m.code, m.sector, m.category, m.brand, m.model, m.year, m.serial, m.location].map(x => (x===null||x===undefined)?'':String(x).toLowerCase())
+    return campos.some(c => c.includes(q))
   })
 
   return (
     <div>
       {dialog}
       <div className="flex gap-2 mb-2">
-        <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="🔍 Buscar máquina..."
+        <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="🔍 Buscar por nome, código, setor, marca, modelo, local..."
           className="flex-1 rounded-xl px-3 py-2 text-xs outline-none"
           style={{background:'var(--s1)',border:'1px solid var(--bd)',color:'var(--t1)',fontFamily:'Sora,system-ui,sans-serif'}}
           onFocus={e=>e.target.style.borderColor='var(--cy)'} onBlur={e=>e.target.style.borderColor='var(--bd)'} />

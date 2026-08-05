@@ -22,6 +22,7 @@ export default function MaintPage({ profile, can }: Props) {
   const [modal, setModal]   = useState(false)
   const [viewModal, setViewModal] = useState(false)
   const [selected, setSelected]  = useState<any>(null)
+  const [buscaMaint, setBuscaMaint] = useState('')
   const [editing, setEdit]  = useState<any>({})
   const [fMach, setFMach]   = useState('')
   const [fType, setFType]   = useState('')
@@ -92,11 +93,15 @@ export default function MaintPage({ profile, can }: Props) {
     toast.success('Excluído'); setViewModal(false); load()
   }
 
-  const filtered = recs.filter(r =>
-    (!fMach||r.machine_id===fMach) &&
-    (!fType||r.type===fType) &&
-    (!fStatus||r.status===fStatus)
-  )
+  const filtered = recs.filter(r => {
+    if (fMach && r.machine_id!==fMach) return false
+    if (fType && r.type!==fType) return false
+    if (fStatus && r.status!==fStatus) return false
+    const q = buscaMaint.trim().toLowerCase()
+    if (!q) return true
+    const campos = [r.machine_name, r.type, r.resp, r.result, r.status, r.date, r.duration, r.description].map(x => (x===null||x===undefined)?'':String(x).toLowerCase())
+    return campos.some(c => c.includes(q))
+  })
 
   // Stats
   const open     = recs.filter(r=>r.status==='open'||!r.status).length
@@ -122,6 +127,11 @@ export default function MaintPage({ profile, can }: Props) {
         ))}
       </div>
 
+      {/* Busca */}
+      <input value={buscaMaint} onChange={e=>setBuscaMaint(e.target.value)}
+        placeholder="🔍 Buscar por máquina, tipo, responsável, resultado, data..."
+        className="w-full rounded-xl px-3 py-2 text-xs outline-none mb-2"
+        style={{background:'var(--s1)',border:'1px solid var(--bd)',color:'var(--t1)',fontFamily:'Sora,system-ui,sans-serif'}} />
       {/* Filters */}
       <div className="grid grid-cols-2 gap-2 mb-2">
         <select value={fMach} onChange={e=>setFMach(e.target.value)} className="rounded-xl px-3 py-2 text-xs outline-none" style={{background:'var(--s1)',border:'1px solid var(--bd)',color:'var(--t1)',fontFamily:'Sora,system-ui,sans-serif',WebkitAppearance:'none'}}>
