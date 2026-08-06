@@ -148,9 +148,12 @@ export default function GerencialPage({ profile, can }: Props) {
       m[k].recebido += +x.recebido||0
       m[k].pago     += +x.pago||0
     })
-    return Object.values(m).map((x:any)=>({...x,
-      saldo: (x.vendas + x.credito - x.recebido) - (x.compras + x.debito - x.pago)
-    })).sort((a:any,b:any)=>Math.abs(b.saldo)-Math.abs(a.saldo))
+    return Object.values(m).map((x:any)=>{
+      // saldo REAL acumulado (nao do periodo) vindo da view v_saldo_parceiro
+      const sr = saldos.find((sf:any)=> (sf.parceiro||'').toUpperCase().trim() === (x.parceiro||'').toUpperCase().trim())
+      const saldoReal = sr ? (+sr.saldo_final||0) : ((x.vendas + x.credito - x.recebido) - (x.compras + x.debito - x.pago))
+      return {...x, saldo: saldoReal}
+    }).sort((a:any,b:any)=>Math.abs(b.saldo)-Math.abs(a.saldo))
   })()
 
   // ── Vendas por produto ──
