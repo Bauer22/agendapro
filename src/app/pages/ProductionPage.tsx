@@ -19,6 +19,7 @@ export default function ProductionPage({ profile, can }: Props) {
   const [woodEntries, setWoodEntries] = useState<any[]>([])
   const [modal, setModal] = useState(false)
   const [editing, setEditing] = useState<any>({})
+  const [view, setView] = useState<any>(null)
   const [buscaProd, setBuscaProd] = useState('')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -116,6 +117,39 @@ export default function ProductionPage({ profile, can }: Props) {
   const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0]
   const monthRecs = records.filter(r => r.prod_date >= monthStart)
   const monthProd = monthRecs.reduce((s,r)=>s+(parseFloat(r.produced_m3)||0),0)
+
+  function imprimirProducao(r: any) {
+    const c = calc(r)
+    const fmtBR = (v:any,d=2) => Number(v||0).toLocaleString('pt-BR',{minimumFractionDigits:d,maximumFractionDigits:d})
+    const linha = (l:string,v:string) => `<tr><td style="padding:6px 10px;color:#555;border-bottom:1px solid #ddd">${l}</td><td style="padding:6px 10px;text-align:right;font-weight:bold;border-bottom:1px solid #ddd">${v}</td></tr>`
+    const html = `
+      <html><head><title>Producao</title></head>
+      <body style="font-family:Arial,sans-serif;max-width:600px;margin:20px auto;color:#111">
+        <div style="background:#060d1a;color:#fff;padding:16px;border-radius:8px 8px 0 0">
+          <h2 style="margin:0;color:#f97316">Industrial8 — Lancamento de Producao</h2>
+          <div style="font-size:12px;color:#ccc">Impresso em ${new Date().toLocaleString('pt-BR')}</div>
+        </div>
+        <table style="width:100%;border-collapse:collapse;border:1px solid #ddd">
+          ${linha('Data', r.prod_date ? new Date(r.prod_date+'T00:00:00').toLocaleDateString('pt-BR') : '-')}
+          ${linha('Turno', r.shift || '-')}
+          ${linha('Classe Madeira', r.wood_class || '-')}
+          ${linha('Produzido (m3)', fmtBR(r.produced_m3) + ' m3')}
+          ${linha('Tanque (m3)', fmtBR(r.tank_m3) + ' m3')}
+          ${linha('Cavaco (m3)', r.cavaco_m3 ? fmtBR(r.cavaco_m3) + ' m3' : '-')}
+          ${linha('Toneladas', fmtBR(c.tons,3) + ' t')}
+          ${linha('Renda', fmtBR(c.yieldPct,4))}
+          ${linha('Custo por m3', 'R$ ' + fmtBR(c.costPerM3))}
+          ${linha('Operador', r.operator || '-')}
+          ${linha('Registrado por', r.created_by || '-')}
+        </table>
+        <div style="margin-top:40px;display:flex;justify-content:space-around;font-size:12px">
+          <div style="text-align:center">_______________________<br>Operador</div>
+          <div style="text-align:center">_______________________<br>Responsavel</div>
+        </div>
+      </body></html>`
+    const w = window.open('', '_blank')
+    if (w) { w.document.write(html); w.document.close(); w.focus(); setTimeout(()=>w.print(), 300) }
+  }
 
   async function exportPDF() {
     try {
@@ -227,6 +261,7 @@ export default function ProductionPage({ profile, can }: Props) {
                       </div>
                     </div>
                     <div className="flex gap-1 ml-2">
+                      <Btn onClick={()=>setView(r)} size="sm">👁️</Btn>
                       <Btn onClick={()=>{setEditing(r);setModal(true)}} size="sm">✏️</Btn>
                       <Btn onClick={()=>del(r.id)} variant="danger" size="sm">🗑</Btn>
                     </div>
@@ -306,6 +341,35 @@ export default function ProductionPage({ profile, can }: Props) {
       </>}
 
       {/* ═══ MODAL ═══ */}
+      <Modal open={!!view} onClose={()=>setView(null)} title="Detalhe da Producao"
+        footer={view && <Btn onClick={()=>imprimirProducao(view)} variant="primary">🖨️ Imprimir</Btn>}>
+        {view && (() => {
+          const c = calc(view)
+          return (
+          <div className="flex flex-col gap-2">
+            {[
+              ['Data', fmtD(view.prod_date)],
+              ['Turno', view.shift || '—'],
+              ['Classe Madeira', view.wood_class || '—'],
+              ['Produzido', `${(parseFloat(view.produced_m3)||0).toFixed(2)} m³`],
+              ['Tanque', `${(parseFloat(view.tank_m3)||0).toFixed(2)} m³`],
+              ['Cavaco', view.cavaco_m3 ? `${parseFloat(view.cavaco_m3).toFixed(2)} m³` : '—'],
+              ['Toneladas', `${c.tons.toFixed(3)} t`],
+              ['Renda', c.yieldPct.toFixed(4)],
+              ['Custo por m³', money(c.costPerM3)],
+              ['Operador', view.operator || '—'],
+              ['Registrado por', view.created_by || '—'],
+            ].map(([l,v],i) => (
+              <div key={i} className="flex justify-between py-1.5 border-b" style={{ borderColor:'var(--bd)', fontSize:'12px' }}>
+                <span style={{ color:'var(--t3)' }}>{l}</span>
+                <span style={{ fontWeight: 600 }}>{v}</span>
+              </div>
+            ))}
+          </div>
+          )
+        })()}
+      </Modal>
+
       <Modal open={modal} onClose={()=>setModal(false)}
         title={editing.id?'Editar Produção':'Lançar Produção'}
         footer={<><Btn onClick={()=>setModal(false)}>Cancelar</Btn>
