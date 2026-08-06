@@ -199,6 +199,40 @@ export default function WoodPage({ profile, can }: Props) {
   // média por carga
   const mediaCarga = rep.length > 0 ? repTons / rep.length : 0
 
+  function imprimirEntrada(e: any) {
+    const fmtBR = (v:any,d=2) => Number(v||0).toLocaleString('pt-BR',{minimumFractionDigits:d,maximumFractionDigits:d})
+    const linha = (l:string,v:string) => `<tr><td style="padding:6px 10px;color:#555;border-bottom:1px solid #ddd">${l}</td><td style="padding:6px 10px;text-align:right;font-weight:bold;border-bottom:1px solid #ddd">${v}</td></tr>`
+    const html = `
+      <html><head><title>Entrada de Madeira</title></head>
+      <body style="font-family:Arial,sans-serif;max-width:600px;margin:20px auto;color:#111">
+        <div style="background:#060d1a;color:#fff;padding:16px;border-radius:8px 8px 0 0">
+          <h2 style="margin:0;color:#f97316">Industrial8 — Entrada de Madeira</h2>
+          <div style="font-size:12px;color:#ccc">Impresso em ${new Date().toLocaleString('pt-BR')}</div>
+        </div>
+        <table style="width:100%;border-collapse:collapse;border:1px solid #ddd">
+          ${linha('Data', e.data_entrada ? new Date(e.data_entrada+'T00:00:00').toLocaleDateString('pt-BR') : '-')}
+          ${linha('Hora Chegada', e.arrival_time?.slice(0,5) || '-')}
+          ${linha('Hora Descarga', e.unload_time?.slice(0,5) || '-')}
+          ${linha('Fornecedor', e.supplier_name || '-')}
+          ${linha('Classe Madeira', e.wood_class || '-')}
+          ${linha('Motorista', e.driver || '-')}
+          ${linha('Placa', e.plate || '-')}
+          ${linha('Toneladas', fmtBR(e.weight_tons,3) + ' t')}
+          ${linha('Metros cubicos', e.volume_m3 ? fmtBR(e.volume_m3) + ' m3' : '-')}
+          ${linha('R$ / tonelada', e.unit_value ? 'R$ ' + fmtBR(e.unit_value) : '-')}
+          ${linha('Valor total', e.total_value ? 'R$ ' + fmtBR(e.total_value) : '-')}
+          ${linha('Observacao', e.observation || '-')}
+          ${linha('Registrado por', e.created_by || '-')}
+        </table>
+        <div style="margin-top:40px;display:flex;justify-content:space-around;font-size:12px">
+          <div style="text-align:center">_______________________<br>Conferente</div>
+          <div style="text-align:center">_______________________<br>Motorista</div>
+        </div>
+      </body></html>`
+    const w = window.open('', '_blank')
+    if (w) { w.document.write(html); w.document.close(); w.focus(); setTimeout(()=>w.print(), 300) }
+  }
+
   async function exportPDF() {
     try {
       const { default: jsPDF } = await import('jspdf')
@@ -460,7 +494,8 @@ export default function WoodPage({ profile, can }: Props) {
       ))}
 
       {/* Detalhe */}
-      <Modal open={!!view} onClose={() => setView(null)} title="Detalhe da Entrada">
+      <Modal open={!!view} onClose={() => setView(null)} title="Detalhe da Entrada"
+        footer={view && <Btn onClick={()=>imprimirEntrada(view)} variant="primary">🖨️ Imprimir</Btn>}>
         {view && (
           <div className="flex flex-col gap-2">
             {[
