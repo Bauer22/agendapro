@@ -186,7 +186,7 @@ export default function ProductionPage({ profile, can }: Props) {
       const y = (doc as any).lastAutoTable.finalY + 8
       autoTable(doc, {
         startY: y, head: [['Data','Turno','Classe','m³ Tanque','Toneladas','m³ Produzido','Cavaco','Renda','Custo/m³']],
-        body: rep.map(r => {
+        body: [...rep].sort((a,b)=>(a.prod_date||'').localeCompare(b.prod_date||'')).map(r => {
           const c = calc(r)
           return [fmtD(r.prod_date), r.shift||'—', r.wood_class||'—',
             (parseFloat(r.tank_m3)||0).toFixed(2), c.tons.toFixed(3),
