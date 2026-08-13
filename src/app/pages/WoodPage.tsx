@@ -95,7 +95,7 @@ export default function WoodPage({ profile, can }: Props) {
       data_entrada:  editing.data_entrada || td(),
       arrival_time:  editing.arrival_time,
       unload_time:   editing.unload_time || null,
-      veiculo_id:    editing.veiculo_id || null,
+      veiculo_id:    (editing.veiculo_id && editing.veiculo_id !== '__OUTRO__') ? editing.veiculo_id : null,
       supplier_id:   editing.supplier_id,
       supplier_name: sup?.name || '',
       wood_class:    editing.wood_class,
@@ -568,19 +568,31 @@ export default function WoodPage({ profile, can }: Props) {
           options={WOOD_CLASSES} />
 
         {motoristas.length > 0 ? (
-          <Select label="Motorista *" value={editing.driver_id||''} onChange={(v:string) => {
-            const m = motoristas.find(x=>x.id===v)
-            setEditing((e:any)=>({...e, driver_id:v, driver: m?.name||''}))
-          }} options={[{value:'',label:'Selecione o motorista...'}, ...motoristas.map(m=>({value:m.id,label:m.name}))]} />
+          <>
+            <Select label="Motorista *" value={editing.driver_id||''} onChange={(v:string) => {
+              if (v==='__OUTRO__') { setEditing((e:any)=>({...e, driver_id:'__OUTRO__', driver:''})); return }
+              const m = motoristas.find(x=>x.id===v)
+              setEditing((e:any)=>({...e, driver_id:v, driver: m?.name||''}))
+            }} options={[{value:'',label:'Selecione o motorista...'}, ...motoristas.map(m=>({value:m.id,label:m.name})), {value:'__OUTRO__',label:'➕ Outro (digitar)'}]} />
+            {editing.driver_id==='__OUTRO__' && (
+              <Input label="Nome do motorista *" value={editing.driver} onChange={(v:string) => setEditing((e:any) => ({...e, driver: v}))} placeholder="Digite o nome do motorista" />
+            )}
+          </>
         ) : (
           <Input label="Motorista *" value={editing.driver} onChange={(v:string) => setEditing((e:any) => ({...e, driver: v}))} placeholder="Nome completo do motorista" />
         )}
 
         {veiculos.length > 0 ? (
-          <Select label="Placa / Veículo *" value={editing.veiculo_id||''} onChange={(v:string) => {
-            const ve = veiculos.find(x=>x.id===v)
-            setEditing((e:any)=>({...e, veiculo_id:v, plate: ve?.placa||''}))
-          }} options={[{value:'',label:'Selecione o veículo...'}, ...veiculos.map(ve=>({value:ve.id,label:`${ve.placa} (${ve.tipo})`}))]} />
+          <>
+            <Select label="Placa / Veículo *" value={editing.veiculo_id||''} onChange={(v:string) => {
+              if (v==='__OUTRO__') { setEditing((e:any)=>({...e, veiculo_id:'__OUTRO__', plate:''})); return }
+              const ve = veiculos.find(x=>x.id===v)
+              setEditing((e:any)=>({...e, veiculo_id:v, plate: ve?.placa||''}))
+            }} options={[{value:'',label:'Selecione o veículo...'}, ...veiculos.map(ve=>({value:ve.id,label:`${ve.placa} (${ve.tipo})`})), {value:'__OUTRO__',label:'➕ Outra (digitar)'}]} />
+            {editing.veiculo_id==='__OUTRO__' && (
+              <Input label="Placa *" value={editing.plate} onChange={(v:string) => setEditing((e:any) => ({...e, plate: maskPlate(v)}))} placeholder="AAA0A00 ou AAA0000" />
+            )}
+          </>
         ) : (
           <Input label="Placa *" value={editing.plate} onChange={(v:string) => setEditing((e:any) => ({...e, plate: maskPlate(v)}))} placeholder="AAA0A00 ou AAA0000" />
         )}
