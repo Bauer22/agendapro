@@ -13,6 +13,7 @@ export default function SuppPage({ profile, can }: Props) {
   const [modal, setModal]   = useState(false)
   const [editing, setEdit]  = useState<Partial<Supplier>>({})
   const [search, setSearch] = useState('')
+  const [saving, setSaving] = useState(false)
   const { confirm, dialog } = useConfirm()
 
   useEffect(() => { load() }, [])
@@ -23,6 +24,9 @@ export default function SuppPage({ profile, can }: Props) {
   }
 
   async function save() {
+    if (saving) return
+    setSaving(true)
+    try {
     if (!editing.name) { toast.error('Informe o nome'); return }
     try {
       if (editing.id) {
@@ -34,6 +38,8 @@ export default function SuppPage({ profile, can }: Props) {
       }
       setModal(false); load()
     } catch(e:any) { toast.error('Erro: '+e.message) }
+  
+    } finally { setSaving(false) }
   }
 
   async function del(id: string) {
@@ -80,7 +86,7 @@ export default function SuppPage({ profile, can }: Props) {
         </div>
       )}
       <Modal open={modal} onClose={()=>setModal(false)} title={editing.id?'Editar Fornecedor':'Novo Fornecedor'}
-        footer={<><Btn onClick={()=>setModal(false)} variant="secondary" size="md">Cancelar</Btn><Btn onClick={save} variant="primary" size="md">Salvar</Btn></>}>
+        footer={<><Btn onClick={()=>setModal(false)} variant="secondary" size="md">Cancelar</Btn><Btn onClick={save} variant="primary" size="md" disabled={saving}>{saving?"Salvando...":"Salvar"}</Btn></>}>
         <Input label="Razão Social *" value={editing.name} onChange={(v:string)=>setEdit(e=>({...e,name:v}))} placeholder="Empresa Ltda." />
         <div className="grid grid-cols-2 gap-x-2">
           <Input label="CNPJ" value={editing.cnpj} onChange={(v:string)=>setEdit(e=>({...e,cnpj:v}))} placeholder="00.000.000/0001-00" />

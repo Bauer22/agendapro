@@ -9,6 +9,7 @@ import type { UserProfile } from '@/types'
 interface Props { profile: UserProfile|null; can:(p:string)=>boolean }
 export default function SchedulingPage({ profile, can }: Props) {
   const [items, setItems] = useState<any[]>([])
+  const [saving, setSaving] = useState(false)
   const [machines, setMachines] = useState<any[]>([])
   const [users, setUsers] = useState<any[]>([])
   const [modal, setModal] = useState(false)
@@ -34,11 +35,16 @@ export default function SchedulingPage({ profile, can }: Props) {
   }
 
   async function save() {
+    if (saving) return
+    setSaving(true)
+    try {
     if (!editing.machine_id||!editing.scheduled_date) { toast.error('Preencha máquina e data'); return }
     const obj = { machine_id: editing.machine_id, machine_name: machines.find(m=>m.id===editing.machine_id)?.name, scheduled_date: editing.scheduled_date, scheduled_time: editing.scheduled_time, type: editing.type||'Preventiva', description: editing.description, resp_id: editing.resp_id, resp_name: users.find(u=>u.id===editing.resp_id)?.display_name||'', status: editing.status||'pending', created_by: profile?.display_name }
     const { error } = editing.id ? await supabase.from('scheduling').update(obj).eq('id',editing.id) : await supabase.from('scheduling').insert(obj)
     if (error) { toast.error('Erro: '+error.message); return }
     toast.success(editing.id?'Atualizado ✅':'Agendado ✅'); setModal(false); load()
+  
+    } finally { setSaving(false) }
   }
 
   async function del(id:string) {
@@ -81,7 +87,7 @@ export default function SchedulingPage({ profile, can }: Props) {
       )}
 
       <Modal open={modal} onClose={()=>setModal(false)} title={editing.id?'Editar Agendamento':'Novo Agendamento'}
-        footer={<><Btn onClick={()=>setModal(false)}>Cancelar</Btn><Btn onClick={save} variant="primary" size="md">Salvar</Btn></>}>
+        footer={<><Btn onClick={()=>setModal(false)}>Cancelar</Btn><Btn onClick={save} variant="primary" size="md" disabled={saving}>{saving?"Salvando...":"Salvar"}</Btn></>}>
         <Select label="Máquina *" value={editing.machine_id} onChange={(v:string)=>setEditing((e:any)=>({...e,machine_id:v}))} options={[{value:'',label:'Selecione...'}, ...machines.map(m=>({value:m.id,label:`${m.icon||'⚙️'} ${m.name}`}))]} />
         <Select label="Tipo" value={editing.type||'Preventiva'} onChange={(v:string)=>setEditing((e:any)=>({...e,type:v}))} options={['Preventiva','Corretiva','Inspeção','Lubrificação','Calibração','Outro']} />
         <div className="grid grid-cols-2 gap-x-3">

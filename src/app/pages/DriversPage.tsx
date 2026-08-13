@@ -11,6 +11,7 @@ const VEHICLE_TYPES = ['Caminhão','Carreta','Toco','VW','Utilitário','Trator',
 export default function DriversPage({ profile, can }: Props) {
   const [drivers, setDrivers]   = useState<any[]>([])
   const [vehicles, setVehicles] = useState<any[]>([])
+  const [saving, setSaving] = useState(false)
   const [modal, setModal]       = useState(false)
   const [modalV, setModalV]     = useState(false)
   const [editing, setEdit]      = useState<any>({})
@@ -29,19 +30,29 @@ export default function DriversPage({ profile, can }: Props) {
   }
 
   async function saveDriver() {
+    if (saving) return
+    setSaving(true)
+    try {
     if (!editing.nome) { toast.error('Informe o nome'); return }
     const obj = { ...editing, ativo: true }
     if (editing.id) { await supabase.from('drivers').update(obj).eq('id', editing.id) }
     else { await supabase.from('drivers').insert({ ...obj, created_at: new Date().toISOString() }) }
     toast.success('Salvo ✅'); setModal(false); load()
+  
+    } finally { setSaving(false) }
   }
 
   async function saveVehicle() {
+    if (saving) return
+    setSaving(true)
+    try {
     if (!editing.placa) { toast.error('Informe a placa'); return }
     const obj = { ...editingV, ativo: true }
     if (editingV.id) { await supabase.from('vehicles').update(obj).eq('id', editingV.id) }
     else { await supabase.from('vehicles').insert({ ...obj, created_at: new Date().toISOString() }) }
     toast.success('Salvo ✅'); setModalV(false); load()
+  
+    } finally { setSaving(false) }
   }
 
   async function toggleDriver(id: string, ativo: boolean) {
@@ -80,7 +91,7 @@ export default function DriversPage({ profile, can }: Props) {
             </div>
           )}
           <Modal open={modal} onClose={()=>setModal(false)} title={editing.id?'Editar Motorista':'Novo Motorista'}
-            footer={<><Btn onClick={()=>setModal(false)} variant="secondary" size="md">Cancelar</Btn><Btn onClick={saveDriver} variant="primary" size="md">Salvar</Btn></>}>
+            footer={<><Btn onClick={()=>setModal(false)} variant="secondary" size="md">Cancelar</Btn><Btn onClick={saveDriver} variant="primary" size="md" disabled={saving}>{saving?"Salvando...":"Salvar"}</Btn></>}>
             <Input label="Nome *" value={editing.nome} onChange={(v:string)=>setEdit((e:any)=>({...e,nome:v}))} />
             <div className="grid grid-cols-2 gap-x-2">
               <Input label="CPF" value={editing.cpf} onChange={(v:string)=>setEdit((e:any)=>({...e,cpf:v}))} placeholder="000.000.000-00" />
@@ -111,7 +122,7 @@ export default function DriversPage({ profile, can }: Props) {
             </div>
           )}
           <Modal open={modalV} onClose={()=>setModalV(false)} title={editingV.id?'Editar Veículo':'Novo Veículo'}
-            footer={<><Btn onClick={()=>setModalV(false)} variant="secondary" size="md">Cancelar</Btn><Btn onClick={saveVehicle} variant="primary" size="md">Salvar</Btn></>}>
+            footer={<><Btn onClick={()=>setModalV(false)} variant="secondary" size="md">Cancelar</Btn><Btn onClick={saveVehicle} variant="primary" size="md" disabled={saving}>{saving?"Salvando...":"Salvar"}</Btn></>}>
             <div className="grid grid-cols-2 gap-x-2">
               <Input label="Placa *" value={editingV.placa} onChange={(v:string)=>setEditV((e:any)=>({...e,placa:v}))} placeholder="ABC-1234" />
               <Select label="Tipo" value={editingV.tipo} onChange={(v:string)=>setEditV((e:any)=>({...e,tipo:v}))} options={VEHICLE_TYPES} />

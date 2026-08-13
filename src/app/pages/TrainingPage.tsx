@@ -9,6 +9,7 @@ import type { UserProfile } from '@/types'
 interface Props { profile: UserProfile|null; can:(p:string)=>boolean }
 export default function TrainingPage({ profile, can }: Props) {
   const [trainings, setTrainings] = useState<any[]>([])
+  const [saving, setSaving] = useState(false)
   const [users, setUsers] = useState<any[]>([])
   const [modal, setModal] = useState(false)
   const [editing, setEditing] = useState<any>({})
@@ -32,11 +33,16 @@ export default function TrainingPage({ profile, can }: Props) {
   }
 
   async function save() {
+    if (saving) return
+    setSaving(true)
+    try {
     if (!editing.title||!editing.user_id) { toast.error('Informe título e funcionário'); return }
     const obj = { title:editing.title, category:editing.category||'Interno', user_id:editing.user_id, user_name:users.find(u=>u.id===editing.user_id)?.display_name||'', training_date:editing.training_date||td(), expiry_date:editing.expiry_date||null, instructor:editing.instructor, hours:parseFloat(editing.hours)||0, status:editing.status||'scheduled', notes:editing.notes, certificate_url:editing.certificate_url, created_by:profile?.display_name }
     const { error } = editing.id ? await supabase.from('trainings').update(obj).eq('id',editing.id) : await supabase.from('trainings').insert(obj)
     if (error) { toast.error(error.message); return }
     toast.success('Treinamento salvo ✅'); setModal(false); load()
+  
+    } finally { setSaving(false) }
   }
 
   async function del(id:string) {
@@ -81,7 +87,7 @@ export default function TrainingPage({ profile, can }: Props) {
       )}
 
       <Modal open={modal} onClose={()=>setModal(false)} title={editing.id?'Editar Treinamento':'Novo Treinamento'}
-        footer={<><Btn onClick={()=>setModal(false)}>Cancelar</Btn><Btn onClick={save} variant="primary" size="md">Salvar</Btn></>}>
+        footer={<><Btn onClick={()=>setModal(false)}>Cancelar</Btn><Btn onClick={save} variant="primary" size="md" disabled={saving}>{saving?"Salvando...":"Salvar"}</Btn></>}>
         <Input label="Título do treinamento *" value={editing.title} onChange={(v:string)=>setEditing((e:any)=>({...e,title:v}))} placeholder="Ex: NR-10 Segurança Elétrica" />
         <div className="grid grid-cols-2 gap-x-3">
           <Select label="Categoria" value={editing.category||'Interno'} onChange={(v:string)=>setEditing((e:any)=>({...e,category:v}))} options={['Interno','Externo','NR','ABNT','Online','Outro']} />

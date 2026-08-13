@@ -9,6 +9,7 @@ interface Props { profile: UserProfile|null; can:(p:string)=>boolean }
 
 export default function ClientsPage({ profile, can }: Props) {
   const [clients, setClients] = useState<any[]>([])
+  const [saving, setSaving] = useState(false)
   const [modal, setModal]     = useState(false)
   const [editing, setEdit]    = useState<any>({})
   const [search, setSearch]   = useState('')
@@ -22,10 +23,15 @@ export default function ClientsPage({ profile, can }: Props) {
   }
 
   async function save() {
+    if (saving) return
+    setSaving(true)
+    try {
     if (!editing.razao_social) { toast.error('Informe a razão social'); return }
     if (editing.id) { await supabase.from('clients').update(editing).eq('id', editing.id) }
     else { await supabase.from('clients').insert({ ...editing, created_at: new Date().toISOString() }) }
     toast.success('Cliente salvo ✅'); setModal(false); load()
+  
+    } finally { setSaving(false) }
   }
 
   async function del(id: string) {
@@ -71,7 +77,7 @@ export default function ClientsPage({ profile, can }: Props) {
         </div>
       )}
       <Modal open={modal} onClose={()=>setModal(false)} title={editing.id?'Editar Cliente':'Novo Cliente'}
-        footer={<><Btn onClick={()=>setModal(false)} variant="secondary" size="md">Cancelar</Btn><Btn onClick={save} variant="primary" size="md">Salvar</Btn></>}>
+        footer={<><Btn onClick={()=>setModal(false)} variant="secondary" size="md">Cancelar</Btn><Btn onClick={save} variant="primary" size="md" disabled={saving}>{saving?"Salvando...":"Salvar"}</Btn></>}>
         <Input label="Razão Social *" value={editing.razao_social} onChange={(v:string)=>setEdit((e:any)=>({...e,razao_social:v}))} />
         <Input label="Nome Fantasia" value={editing.nome_fantasia} onChange={(v:string)=>setEdit((e:any)=>({...e,nome_fantasia:v}))} />
         <div className="grid grid-cols-2 gap-x-2">

@@ -14,6 +14,7 @@ export default function LoadsPage({ profile, can }: Props) {
   const [clients, setClients]   = useState<any[]>([])
   const [drivers, setDrivers]   = useState<any[]>([])
   const [vehicles, setVehicles] = useState<any[]>([])
+  const [saving, setSaving] = useState(false)
   const [loading, setLoad]      = useState(true)
   const [modal, setModal]       = useState(false)
   const [type, setType]         = useState<'chip'|'veneer'>('chip')
@@ -45,6 +46,9 @@ export default function LoadsPage({ profile, can }: Props) {
   }
 
   async function save() {
+    if (saving) return
+    setSaving(true)
+    try {
     try {
       if (type==='chip') {
         const valor_total = (editing.peso||0)*(editing.valor_tonelada||0)/1000
@@ -56,6 +60,8 @@ export default function LoadsPage({ profile, can }: Props) {
       }
       toast.success('Carregamento salvo ✅'); setModal(false); load()
     } catch(e:any) { toast.error('Erro: '+e.message) }
+  
+    } finally { setSaving(false) }
   }
 
   async function del(id: string, tbl: string) {
@@ -148,7 +154,7 @@ export default function LoadsPage({ profile, can }: Props) {
       )}
 
       <Modal open={modal} onClose={()=>setModal(false)} title={type==='veneer'?'Novo Carregamento de Lâminas':'Novo Carregamento de Chips'}
-        footer={<><Btn onClick={()=>setModal(false)} variant="secondary" size="md">Cancelar</Btn><Btn onClick={save} variant="primary" size="md">Salvar</Btn></>}>
+        footer={<><Btn onClick={()=>setModal(false)} variant="secondary" size="md">Cancelar</Btn><Btn onClick={save} variant="primary" size="md" disabled={saving}>{saving?"Salvando...":"Salvar"}</Btn></>}>
         <Select label="Cliente *" value={editing.cliente_id} onChange={(v:string)=>setEdit((e:any)=>({...e,cliente_id:v}))}
           options={[{value:'',label:'Selecione...'},...clients.map(c=>({value:c.id,label:c.razao_social||c.nome_fantasia}))]} />
         <div className="grid grid-cols-2 gap-x-2">

@@ -45,6 +45,9 @@ export default function TasksPage({ profile, can }: Props) {
   }
 
   async function save() {
+    if (saving) return
+    setSaving(true)
+    try {
     if (!editing.title) { toast.error('Informe o título'); return }
     const usr = users.find(u=>u.id===editing.owner_id)
     const obj = { ...editing, owner_name: usr?.display_name||usr?.email, created_by: profile?.display_name||profile?.email }
@@ -58,6 +61,8 @@ export default function TasksPage({ profile, can }: Props) {
       }
       toast.success('Tarefa salva ✅'); setModal(false); load()
     } catch(e:any) { toast.error('Erro: '+e.message) }
+  
+    } finally { setSaving(false) }
   }
 
   async function del(id: string) {
@@ -124,7 +129,7 @@ export default function TasksPage({ profile, can }: Props) {
       )}
 
       <Modal open={modal} onClose={()=>setModal(false)} title={editing.id?'Editar Tarefa':'Nova Tarefa'}
-        footer={<><Btn onClick={()=>setModal(false)} variant="secondary" size="md">Cancelar</Btn><Btn onClick={save} variant="primary" size="md">Salvar</Btn></>}>
+        footer={<><Btn onClick={()=>setModal(false)} variant="secondary" size="md">Cancelar</Btn><Btn onClick={save} variant="primary" size="md" disabled={saving}>{saving?"Salvando...":"Salvar"}</Btn></>}>
         <Input label="Título *" value={editing.title} onChange={(v:string)=>setEdit(e=>({...e,title:v}))} placeholder="O que precisa ser feito?" />
         <div className="grid grid-cols-2 gap-x-2">
           <Input label="Data" value={editing.date} onChange={(v:string)=>setEdit(e=>({...e,date:v}))} type="date" />

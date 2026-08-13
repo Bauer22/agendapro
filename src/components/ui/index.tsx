@@ -124,7 +124,7 @@ export function Textarea({ label, value, onChange, rows=3, placeholder }: any) {
 export function Modal({ open, onClose, title, children, footer }: any) {
   if (!open) return null
   return (
-    <div style={{position:'fixed',inset:0,zIndex:100,display:'flex',alignItems:'flex-end',justifyContent:'center',padding:'0'}} onClick={e=>{if(e.target===e.currentTarget)onClose()}}>
+    <div style={{position:'fixed',inset:0,zIndex:100,display:'flex',alignItems:'flex-end',justifyContent:'center',padding:'0'}}>
       <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.7)',backdropFilter:'blur(4px)'}}/>
       <div style={{position:'relative',zIndex:1,background:'var(--bg2)',border:'1px solid var(--bd)',borderRadius:'20px 20px 0 0',width:'100%',maxWidth:'520px',maxHeight:'90vh',display:'flex',flexDirection:'column',boxShadow:'0 -8px 40px rgba(0,0,0,.5)'}}>
         <div style={{position:'absolute',top:0,left:0,right:0,height:'2px',background:'linear-gradient(90deg,transparent,#f97316,transparent)',borderRadius:'20px 20px 0 0'}}/>
