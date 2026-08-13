@@ -28,6 +28,7 @@ export default function WoodPage({ profile, can }: Props) {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [tab, setTab] = useState<'lista'|'relatorio'>('lista')
+  const [buscaWood, setBuscaWood] = useState('')
   const [rFrom, setRFrom] = useState(''); const [rTo, setRTo] = useState('')
   const [rForn, setRForn] = useState('')
   const [rMot, setRMot] = useState('')
@@ -458,9 +459,20 @@ export default function WoodPage({ profile, can }: Props) {
       )}
 
       {tab==='lista' && (loading ? <Empty icon="⏳" text="Carregando..." /> :
-       entries.length === 0 ? <Empty icon="🪵" text="Nenhuma entrada registrada." /> : (
+       entries.length === 0 ? <Empty icon="🪵" text="Nenhuma entrada registrada." /> : (() => {
+        const termo = buscaWood.trim().toLowerCase()
+        const entriesFiltrados = !termo ? entries : entries.filter((e:any) => {
+          const campos = [e.data_entrada, e.supplier_name, e.driver, e.plate, e.wood_class, e.weight_tons, e.volume_m3, e.total_value, e.unload_time, e.arrival_time].map(x => (x===null||x===undefined)?'':String(x).toLowerCase())
+          return campos.some(c => c.includes(termo))
+        })
+        return (
         <div className="flex flex-col gap-2">
-          {entries.map(e => (
+          <input value={buscaWood} onChange={ev=>setBuscaWood(ev.target.value)}
+            placeholder="🔍 Buscar por fornecedor, motorista, placa, classe, data, valor..."
+            className="w-full rounded-xl px-3 py-2 text-xs outline-none mb-1"
+            style={{background:'var(--s2)',border:'1px solid var(--bd)',color:'var(--t1)',fontFamily:'Sora,system-ui,sans-serif'}} />
+          {termo && <div style={{fontSize:'9px',color:'var(--t3)',marginBottom:'4px'}}>{entriesFiltrados.length} resultado(s)</div>}
+          {entriesFiltrados.map(e => (
             <div key={e.id} onClick={() => setView(e)}
               className="rounded-xl p-3 cursor-pointer"
               style={{ background: 'var(--s1)', border: '1px solid var(--bd)' }}>
@@ -491,7 +503,8 @@ export default function WoodPage({ profile, can }: Props) {
             </div>
           ))}
         </div>
-      ))}
+        )
+      })())}
 
       {/* Detalhe */}
       <Modal open={!!view} onClose={() => setView(null)} title="Detalhe da Entrada"
