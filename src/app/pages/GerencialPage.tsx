@@ -33,6 +33,12 @@ export default function GerencialPage({ profile, can }: Props) {
 
   async function load() {
     setLoading(true)
+    // Fecha automaticamente o estoque de madeira do mes atual (atualiza materia-prima)
+    // A funcao faz upsert e recalcula sempre; se falhar, apenas segue sem travar o dashboard
+    try {
+      const mesAtual = new Date().toISOString().slice(0,7)
+      await supabase.rpc('fn_fechar_estoque_madeira', { p_mes: mesAtual })
+    } catch (e) { /* silencioso: nao impede o carregamento */ }
     const [c, cc, t, k, s, v] = await Promise.all([
       supabase.from('v_custo_m3_mensal').select('*'),
       supabase.from('v_custo_m3_centro').select('*'),
