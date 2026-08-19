@@ -30,6 +30,9 @@ export default function FinancePage({ profile, can }: Props) {
   const [relFrom, setRelFrom]   = useState('')
   const [relTo, setRelTo]       = useState('')
   const [gerando, setGerando]   = useState(false)
+  const [relCentro, setRelCentro] = useState('')
+  const [relMaquina, setRelMaquina] = useState('')
+  const [relResult, setRelResult] = useState<any>(null)
   const { confirm, dialog }     = useConfirm()
 
   useEffect(() => { load() }, [tab])
@@ -176,78 +179,118 @@ export default function FinancePage({ profile, can }: Props) {
   })
 
 
+  // Calcula os dados do relatorio (compartilhado: tela, PDF, impressao)
+  async function calcularRelatorio() {
+    let q = supabase.from('accounts_payable').select('*').order('due_date',{ascending:true})
+    if (relFrom) q = q.gte('due_date', relFrom)
+    if (relTo)   q = q.lte('due_date', relTo)
+    if (relCentro) q = q.eq('centro_custo_id', relCentro)
+    if (relMaquina) q = q.eq('machine_id', relMaquina)
+    const { data: contas } = await q
+    let rows = contas || []
+
+    const nomeForn = (id:string) => { const s = suppliers.find((x:any)=>x.id===id); return s ? (s.nome_razao||s.nome_fantasia) : '—' }
+    const nomeCentro = (id:string) => { const c = centers.find((x:any)=>x.id===id); return c ? `${c.codigo} - ${c.descricao}` : '—' }
+    const nomeMaquina = (id:string) => { const m = machines.find((x:any)=>x.id===id); return m ? ((m.code?m.code+' - ':'')+m.name) : null }
+    const stLabel = (s:string) => s==='paid'?'Pago':s==='pending'?'Pendente':s==='overdue'?'Vencido':s==='cancelled'?'Cancelado':(s||'—')
+
+    const lista = rows.map((b:any)=>({
+      due_date: b.due_date, forn: nomeForn(b.fornecedor_id), descricao: b.descricao||'—',
+      centro: nomeCentro(b.centro_custo_id), maquina: nomeMaquina(b.machine_id)||'—',
+      valor: Number(b.valor)||0, status: stLabel(b.status)
+    }))
+    const total = lista.reduce((s:number,b:any)=>s+b.valor,0)
+
+    const porCentro:any = {}
+    rows.forEach((b:any)=>{ const k=nomeCentro(b.centro_custo_id); if(!porCentro[k]) porCentro[k]={qtd:0,val:0}; porCentro[k].qtd++; porCentro[k].val+=Number(b.valor)||0 })
+    const centroRows = Object.keys(porCentro).map(k=>({nome:k,qtd:porCentro[k].qtd,val:porCentro[k].val})).sort((a:any,b:any)=>b.val-a.val)
+
+    const porMaquina:any = {}
+    rows.forEach((b:any)=>{ const nm=nomeMaquina(b.machine_id); if(nm){ if(!porMaquina[nm]) porMaquina[nm]={qtd:0,val:0}; porMaquina[nm].qtd++; porMaquina[nm].val+=Number(b.valor)||0 } })
+    const maqRows = Object.keys(porMaquina).map(k=>({nome:k,qtd:porMaquina[k].qtd,val:porMaquina[k].val})).sort((a:any,b:any)=>b.val-a.val)
+
+    return { lista, total, centroRows, maqRows }
+  }
+
+  const moneyBR = (v:any) => 'R$ ' + Number(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})
+  const fmtDataBR = (d:string) => d ? new Date(d+'T00:00:00').toLocaleDateString('pt-BR') : '—'
+
+  // Ver na tela
+  async function verRelatorio() {
+    if (gerando) return
+    setGerando(true)
+    try {
+      const r = await calcularRelatorio()
+      setRelResult(r)
+    } catch (err:any) { toast.error('Erro: ' + (err?.message||err)) }
+    finally { setGerando(false) }
+  }
+
+  // Baixar PDF
   async function gerarRelatorioFinanceiro() {
     if (gerando) return
     setGerando(true)
     try {
       const { default: jsPDF } = await import('jspdf')
       const { default: autoTable } = await import('jspdf-autotable')
-      const money = (v:any) => 'R$ ' + Number(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})
-      const fmtD = (d:string) => d ? new Date(d+'T00:00:00').toLocaleDateString('pt-BR') : '—'
-
-      // Buscar contas do periodo (por data de pagamento/vencimento)
-      let q = supabase.from('accounts_payable').select('*').order('due_date',{ascending:true})
-      if (relFrom) q = q.gte('due_date', relFrom)
-      if (relTo)   q = q.lte('due_date', relTo)
-      const { data: contas } = await q
-      const rows = contas || []
-
-      const nomeForn = (id:string) => { const s = suppliers.find((x:any)=>x.id===id); return s ? (s.nome_razao||s.nome_fantasia) : '—' }
-      const nomeCentro = (id:string) => { const c = centers.find((x:any)=>x.id===id); return c ? `${c.codigo} - ${c.descricao}` : '—' }
-      const nomeMaquina = (id:string) => { const m = machines.find((x:any)=>x.id===id); return m ? ((m.code?m.code+' - ':'')+m.name) : null }
-
+      const r = await calcularRelatorio()
       const doc = new jsPDF()
       doc.setFillColor(6,13,26); doc.rect(0,0,210,24,'F')
       doc.setTextColor(249,115,22); doc.setFontSize(15); doc.setFont('helvetica','bold')
       doc.text('Industrial8 — Relatorio Financeiro', 12, 11)
       doc.setTextColor(200,200,200); doc.setFontSize(9); doc.setFont('helvetica','normal')
-      const periodo = (relFrom||relTo) ? `Periodo: ${relFrom?fmtD(relFrom):'inicio'} a ${relTo?fmtD(relTo):'hoje'}` : 'Todos os lancamentos'
+      const periodo = (relFrom||relTo) ? `Periodo: ${relFrom?fmtDataBR(relFrom):'inicio'} a ${relTo?fmtDataBR(relTo):'hoje'}` : 'Todos os lancamentos'
       doc.text(periodo + ' | Gerado em ' + new Date().toLocaleDateString('pt-BR'), 12, 18)
-
-      // Secao 1: lista de contas
       autoTable(doc, {
         startY: 30,
         head: [['Vencimento','Fornecedor','Descricao','Centro de Custo','Maquina','Valor','Status']],
-        body: rows.map((b:any)=>[
-          fmtD(b.due_date), nomeForn(b.fornecedor_id), b.descricao||'—',
-          nomeCentro(b.centro_custo_id), nomeMaquina(b.machine_id)||'—',
-          money(b.valor),
-          b.status==='paid'?'Pago':b.status==='pending'?'Pendente':b.status==='overdue'?'Vencido':b.status||'—'
-        ]),
-        foot: [['TOTAL','','','','', money(rows.reduce((s:number,b:any)=>s+(Number(b.valor)||0),0)),'']],
+        body: r.lista.map((b:any)=>[fmtDataBR(b.due_date), b.forn, b.descricao, b.centro, b.maquina, moneyBR(b.valor), b.status]),
+        foot: [['TOTAL','','','','', moneyBR(r.total),'']],
         theme:'striped', styles:{fontSize:7}, headStyles:{fillColor:[30,58,110],textColor:[255,255,255]},
         footStyles:{fillColor:[30,58,110],textColor:[255,255,255],fontStyle:'bold'},
       })
       let y = (doc as any).lastAutoTable.finalY + 10
-
-      // Secao 2: resumo por centro de custo
-      const porCentro:any = {}
-      rows.forEach((b:any)=>{ const k=nomeCentro(b.centro_custo_id); if(!porCentro[k]) porCentro[k]={qtd:0,val:0}; porCentro[k].qtd++; porCentro[k].val+=Number(b.valor)||0 })
-      const centroRows = Object.keys(porCentro).map(k=>[k, String(porCentro[k].qtd), money(porCentro[k].val)]).sort((a:any,b:any)=>parseFloat(b[2].replace(/[^0-9,-]/g,'').replace(',','.'))-parseFloat(a[2].replace(/[^0-9,-]/g,'').replace(',','.')))
-      if (centroRows.length>0) {
+      if (r.centroRows.length>0) {
         if (y>250){doc.addPage();y=20}
         doc.setFont('helvetica','bold'); doc.setFontSize(11); doc.setTextColor(0,0,0)
         doc.text('Resumo por Centro de Custo', 12, y)
-        autoTable(doc, { startY:y+3, head:[['Centro de Custo','Qtd','Total']], body:centroRows, theme:'grid', styles:{fontSize:8}, headStyles:{fillColor:[59,130,246]} })
+        autoTable(doc, { startY:y+3, head:[['Centro de Custo','Qtd','Total']], body:r.centroRows.map((c:any)=>[c.nome,String(c.qtd),moneyBR(c.val)]), theme:'grid', styles:{fontSize:8}, headStyles:{fillColor:[59,130,246]} })
         y = (doc as any).lastAutoTable.finalY + 10
       }
-
-      // Secao 3: resumo por maquina
-      const porMaquina:any = {}
-      rows.forEach((b:any)=>{ const nm=nomeMaquina(b.machine_id); if(nm){ if(!porMaquina[nm]) porMaquina[nm]={qtd:0,val:0}; porMaquina[nm].qtd++; porMaquina[nm].val+=Number(b.valor)||0 } })
-      const maqRows = Object.keys(porMaquina).map(k=>[k, String(porMaquina[k].qtd), money(porMaquina[k].val)]).sort((a:any,b:any)=>parseFloat(b[2].replace(/[^0-9,-]/g,'').replace(',','.'))-parseFloat(a[2].replace(/[^0-9,-]/g,'').replace(',','.')))
-      if (maqRows.length>0) {
+      if (r.maqRows.length>0) {
         if (y>250){doc.addPage();y=20}
         doc.setFont('helvetica','bold'); doc.setFontSize(11); doc.setTextColor(0,0,0)
         doc.text('Custo por Maquina', 12, y)
-        autoTable(doc, { startY:y+3, head:[['Maquina','Qtd','Total']], body:maqRows, theme:'grid', styles:{fontSize:8}, headStyles:{fillColor:[34,197,94]} })
+        autoTable(doc, { startY:y+3, head:[['Maquina','Qtd','Total']], body:r.maqRows.map((m:any)=>[m.nome,String(m.qtd),moneyBR(m.val)]), theme:'grid', styles:{fontSize:8}, headStyles:{fillColor:[34,197,94]} })
       }
-
       doc.save(`financeiro_${new Date().toISOString().slice(0,10)}.pdf`)
       toast.success('Relatorio gerado')
-    } catch (err:any) {
-      toast.error('Erro ao gerar: ' + (err?.message||err))
-    } finally { setGerando(false) }
+    } catch (err:any) { toast.error('Erro ao gerar: ' + (err?.message||err)) }
+    finally { setGerando(false) }
+  }
+
+  // Imprimir
+  async function imprimirRelatorio() {
+    if (gerando) return
+    setGerando(true)
+    try {
+      const r = await calcularRelatorio()
+      const periodo = (relFrom||relTo) ? `Periodo: ${relFrom?fmtDataBR(relFrom):'inicio'} a ${relTo?fmtDataBR(relTo):'hoje'}` : 'Todos os lancamentos'
+      const th='padding:6px 8px;background:#1e3a6e;color:#fff;font-size:11px;text-align:left'
+      const td2='padding:5px 8px;border-bottom:1px solid #ddd;font-size:11px'
+      const linhas = r.lista.map((b:any)=>`<tr><td style="${td2}">${fmtDataBR(b.due_date)}</td><td style="${td2}">${b.forn}</td><td style="${td2}">${b.descricao}</td><td style="${td2}">${b.centro}</td><td style="${td2}">${b.maquina}</td><td style="${td2};text-align:right">${moneyBR(b.valor)}</td><td style="${td2}">${b.status}</td></tr>`).join('')
+      const centroLinhas = r.centroRows.map((c:any)=>`<tr><td style="${td2}">${c.nome}</td><td style="${td2}">${c.qtd}</td><td style="${td2};text-align:right">${moneyBR(c.val)}</td></tr>`).join('')
+      const maqLinhas = r.maqRows.map((m:any)=>`<tr><td style="${td2}">${m.nome}</td><td style="${td2}">${m.qtd}</td><td style="${td2};text-align:right">${moneyBR(m.val)}</td></tr>`).join('')
+      const html = `<html><head><title>Relatorio Financeiro</title></head><body style="font-family:Arial,sans-serif;max-width:800px;margin:20px auto;color:#111">
+        <div style="background:#060d1a;color:#fff;padding:16px;border-radius:8px 8px 0 0"><h2 style="margin:0;color:#f97316">Industrial8 — Relatorio Financeiro</h2><div style="font-size:12px;color:#ccc">${periodo} · Impresso em ${new Date().toLocaleString('pt-BR')}</div></div>
+        <table style="width:100%;border-collapse:collapse;margin-top:10px"><thead><tr><th style="${th}">Vencimento</th><th style="${th}">Fornecedor</th><th style="${th}">Descricao</th><th style="${th}">Centro</th><th style="${th}">Maquina</th><th style="${th};text-align:right">Valor</th><th style="${th}">Status</th></tr></thead><tbody>${linhas}<tr><td colspan="5" style="${td2};font-weight:bold;text-align:right">TOTAL</td><td style="${td2};font-weight:bold;text-align:right">${moneyBR(r.total)}</td><td></td></tr></tbody></table>
+        ${r.centroRows.length? `<h3 style="margin-top:24px;color:#3b82f6">Resumo por Centro de Custo</h3><table style="width:100%;border-collapse:collapse"><thead><tr><th style="${th}">Centro de Custo</th><th style="${th}">Qtd</th><th style="${th};text-align:right">Total</th></tr></thead><tbody>${centroLinhas}</tbody></table>`:''}
+        ${r.maqRows.length? `<h3 style="margin-top:24px;color:#22c55e">Custo por Maquina</h3><table style="width:100%;border-collapse:collapse"><thead><tr><th style="${th}">Maquina</th><th style="${th}">Qtd</th><th style="${th};text-align:right">Total</th></tr></thead><tbody>${maqLinhas}</tbody></table>`:''}
+      </body></html>`
+      const w = window.open('','_blank')
+      if (w) { w.document.write(html); w.document.close(); w.focus(); setTimeout(()=>w.print(),300) }
+    } catch (err:any) { toast.error('Erro: ' + (err?.message||err)) }
+    finally { setGerando(false) }
   }
 
   return (
@@ -451,14 +494,70 @@ export default function FinancePage({ profile, can }: Props) {
         </>
       )}
       {tab==='relatorios' && (
-        <div className="rounded-2xl p-4" style={{background:'var(--s1)',border:'1px solid var(--bd)'}}>
-          <div style={{fontSize:'13px',fontWeight:700,color:'var(--t1)',marginBottom:'12px'}}>📄 Relatório Financeiro</div>
-          <div style={{fontSize:'11px',color:'var(--t3)',marginBottom:'12px'}}>Gera um PDF com as contas do período, resumo por centro de custo e custo por máquina.</div>
-          <div className="grid grid-cols-2 gap-3 mb-3">
-            <Input label="Data inicial" value={relFrom} onChange={(v:string)=>setRelFrom(v)} type="date" />
-            <Input label="Data final" value={relTo} onChange={(v:string)=>setRelTo(v)} type="date" />
+        <div className="flex flex-col gap-3">
+          <div className="rounded-2xl p-4" style={{background:'var(--s1)',border:'1px solid var(--bd)'}}>
+            <div style={{fontSize:'13px',fontWeight:700,color:'var(--t1)',marginBottom:'10px'}}>📄 Relatório Financeiro</div>
+            <div className="grid grid-cols-2 gap-3 mb-3">
+              <Input label="Data inicial" value={relFrom} onChange={(v:string)=>setRelFrom(v)} type="date" />
+              <Input label="Data final" value={relTo} onChange={(v:string)=>setRelTo(v)} type="date" />
+              <Select label="Centro de Custo" value={relCentro} onChange={(v:string)=>setRelCentro(v)} options={[{value:'',label:'Todos os centros'}, ...centers.map((c:any)=>({value:c.id,label:`${c.codigo} - ${c.descricao}`}))]} />
+              <Select label="Máquina" value={relMaquina} onChange={(v:string)=>setRelMaquina(v)} options={[{value:'',label:'Todas as máquinas'}, ...machines.map((m:any)=>({value:m.id,label:(m.code?m.code+' - ':'')+m.name}))]} />
+            </div>
+            <div className="flex gap-2 flex-wrap">
+              <Btn onClick={verRelatorio} variant="primary" size="md" disabled={gerando}>{gerando?'Carregando...':'🔍 Ver na Tela'}</Btn>
+              <Btn onClick={imprimirRelatorio} size="md" disabled={gerando}>🖨️ Imprimir</Btn>
+              <Btn onClick={gerarRelatorioFinanceiro} size="md" disabled={gerando}>📄 Baixar PDF</Btn>
+            </div>
           </div>
-          <Btn onClick={gerarRelatorioFinanceiro} variant="primary" size="md" disabled={gerando}>{gerando?'Gerando...':'📄 Gerar Relatório PDF'}</Btn>
+
+          {relResult && (
+            <div className="rounded-2xl p-4" style={{background:'var(--s1)',border:'1px solid var(--bd)'}}>
+              <div style={{fontSize:'12px',fontWeight:700,color:'var(--cy)',marginBottom:'8px'}}>Contas do Período ({relResult.lista.length})</div>
+              <div style={{overflowX:'auto'}}>
+                <table style={{width:'100%',borderCollapse:'collapse',fontSize:'11px'}}>
+                  <thead><tr style={{background:'var(--s2)'}}>
+                    {['Vencimento','Fornecedor','Descrição','Centro','Máquina','Valor','Status'].map(h=>(
+                      <th key={h} style={{padding:'6px 8px',textAlign:'left',color:'var(--t2)',borderBottom:'1px solid var(--bd)'}}>{h}</th>
+                    ))}
+                  </tr></thead>
+                  <tbody>
+                    {relResult.lista.map((b:any,i:number)=>(
+                      <tr key={i} style={{borderBottom:'1px solid var(--bd)'}}>
+                        <td style={{padding:'5px 8px',color:'var(--t1)'}}>{fmtDataBR(b.due_date)}</td>
+                        <td style={{padding:'5px 8px',color:'var(--t1)'}}>{b.forn}</td>
+                        <td style={{padding:'5px 8px',color:'var(--t1)'}}>{b.descricao}</td>
+                        <td style={{padding:'5px 8px',color:'var(--t3)'}}>{b.centro}</td>
+                        <td style={{padding:'5px 8px',color:'var(--t3)'}}>{b.maquina}</td>
+                        <td style={{padding:'5px 8px',textAlign:'right',fontWeight:600,color:'var(--t1)'}}>{moneyBR(b.valor)}</td>
+                        <td style={{padding:'5px 8px',color:'var(--t2)'}}>{b.status}</td>
+                      </tr>
+                    ))}
+                    <tr style={{background:'var(--s2)',fontWeight:700}}>
+                      <td colSpan={5} style={{padding:'6px 8px',textAlign:'right',color:'var(--t1)'}}>TOTAL</td>
+                      <td style={{padding:'6px 8px',textAlign:'right',color:'var(--cy)'}}>{moneyBR(relResult.total)}</td>
+                      <td></td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              {relResult.centroRows.length>0 && (<>
+                <div style={{fontSize:'12px',fontWeight:700,color:'#3b82f6',margin:'16px 0 8px'}}>Resumo por Centro de Custo</div>
+                <table style={{width:'100%',borderCollapse:'collapse',fontSize:'11px'}}>
+                  <thead><tr style={{background:'var(--s2)'}}><th style={{padding:'6px 8px',textAlign:'left',color:'var(--t2)'}}>Centro</th><th style={{padding:'6px 8px',textAlign:'left',color:'var(--t2)'}}>Qtd</th><th style={{padding:'6px 8px',textAlign:'right',color:'var(--t2)'}}>Total</th></tr></thead>
+                  <tbody>{relResult.centroRows.map((c:any,i:number)=>(<tr key={i} style={{borderBottom:'1px solid var(--bd)'}}><td style={{padding:'5px 8px',color:'var(--t1)'}}>{c.nome}</td><td style={{padding:'5px 8px',color:'var(--t1)'}}>{c.qtd}</td><td style={{padding:'5px 8px',textAlign:'right',color:'var(--t1)'}}>{moneyBR(c.val)}</td></tr>))}</tbody>
+                </table>
+              </>)}
+
+              {relResult.maqRows.length>0 && (<>
+                <div style={{fontSize:'12px',fontWeight:700,color:'#22c55e',margin:'16px 0 8px'}}>Custo por Máquina</div>
+                <table style={{width:'100%',borderCollapse:'collapse',fontSize:'11px'}}>
+                  <thead><tr style={{background:'var(--s2)'}}><th style={{padding:'6px 8px',textAlign:'left',color:'var(--t2)'}}>Máquina</th><th style={{padding:'6px 8px',textAlign:'left',color:'var(--t2)'}}>Qtd</th><th style={{padding:'6px 8px',textAlign:'right',color:'var(--t2)'}}>Total</th></tr></thead>
+                  <tbody>{relResult.maqRows.map((m:any,i:number)=>(<tr key={i} style={{borderBottom:'1px solid var(--bd)'}}><td style={{padding:'5px 8px',color:'var(--t1)'}}>{m.nome}</td><td style={{padding:'5px 8px',color:'var(--t1)'}}>{m.qtd}</td><td style={{padding:'5px 8px',textAlign:'right',color:'var(--t1)'}}>{moneyBR(m.val)}</td></tr>))}</tbody>
+                </table>
+              </>)}
+            </div>
+          )}
         </div>
       )}
     </div>
