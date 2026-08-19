@@ -88,13 +88,15 @@ export default function GerencialPage({ profile, can }: Props) {
     maoObra:       fCustos.reduce((s,x)=>s+(+x.custo_mao_obra||0),0),
     manutencao:    fCustos.reduce((s,x)=>s+(+x.custo_manutencao||0),0),
     energia:       fCustos.reduce((s,x)=>s+(+x.custo_energia||0),0),
+    caldeira:      fCustos.reduce((s,x)=>s+(+x.custo_caldeira||0),0),
+    combustivel:   fCustos.reduce((s,x)=>s+(+x.custo_combustivel||0),0),
     administrativo:fCustos.reduce((s,x)=>s+(+x.custo_administrativo||0),0),
     maquinas:      fCustos.reduce((s,x)=>s+(+x.custo_maquinas||0),0),
     diversas:      fCustos.reduce((s,x)=>s+(+x.custo_diversas||0),0),
     fixosAdm:      fCustos.reduce((s,x)=>s+(+x.custo_fixos_adm||0),0),
     melhorias:     fCustos.reduce((s,x)=>s+(+x.custo_melhorias||0),0),
   }
-  const custoTotal = T.materiaPrima + T.maoObra + T.manutencao + T.energia + T.administrativo + T.maquinas + T.diversas + T.fixosAdm + T.melhorias
+  const custoTotal = T.materiaPrima + T.maoObra + T.manutencao + T.energia + T.caldeira + T.combustivel + T.administrativo + T.maquinas + T.diversas + T.fixosAdm + T.melhorias
   const custoM3    = T.m3 > 0 ? custoTotal / T.m3 : 0
   const fatTotal   = fVendas.reduce((s,x)=>s+(+x.faturado||0),0)
   const margem     = fatTotal - custoTotal
@@ -188,6 +190,8 @@ export default function GerencialPage({ profile, can }: Props) {
         <tr><td>Mão de Obra</td><td class="r">R$ ${(T.m3>0?T.maoObra/T.m3:0).toLocaleString('pt-BR',{minimumFractionDigits:2})}/m³</td></tr>
         <tr><td>Manutenção</td><td class="r">R$ ${(T.m3>0?T.manutencao/T.m3:0).toLocaleString('pt-BR',{minimumFractionDigits:2})}/m³</td></tr>
         <tr><td>Energia</td><td class="r">R$ ${(T.m3>0?T.energia/T.m3:0).toLocaleString('pt-BR',{minimumFractionDigits:2})}/m³</td></tr>
+        <tr><td>Caldeira</td><td class="r">R$ ${(T.m3>0?T.caldeira/T.m3:0).toLocaleString('pt-BR',{minimumFractionDigits:2})}/m³</td></tr>
+        <tr><td>Combustível</td><td class="r">R$ ${(T.m3>0?T.combustivel/T.m3:0).toLocaleString('pt-BR',{minimumFractionDigits:2})}/m³</td></tr>
         <tr><td>Administrativo</td><td class="r">R$ ${(T.m3>0?T.administrativo/T.m3:0).toLocaleString('pt-BR',{minimumFractionDigits:2})}/m³</td></tr>
         <tr><td>Máquinas</td><td class="r">R$ ${(T.m3>0?T.maquinas/T.m3:0).toLocaleString('pt-BR',{minimumFractionDigits:2})}/m³</td></tr>
         <tr><td>Despesas Diversas</td><td class="r">R$ ${(T.m3>0?T.diversas/T.m3:0).toLocaleString('pt-BR',{minimumFractionDigits:2})}/m³</td></tr>
@@ -364,6 +368,8 @@ export default function GerencialPage({ profile, can }: Props) {
               <Row label="👷 Mão de Obra" value={`${money(T.m3>0?T.maoObra/T.m3:0)}/m³`} color="var(--cy)" />
               <Row label="🔧 Manutenção" value={`${money(T.m3>0?T.manutencao/T.m3:0)}/m³`} color="var(--am)" />
               <Row label="⚡ Energia" value={`${money(T.m3>0?T.energia/T.m3:0)}/m³`} color="var(--am)" />
+              <Row label="🔥 Caldeira" value={`${money(T.m3>0?T.caldeira/T.m3:0)}/m³`} color="var(--am)" />
+              <Row label="⛽ Combustível" value={`${money(T.m3>0?T.combustivel/T.m3:0)}/m³`} color="var(--am)" />
               <Row label="📋 Administrativo" value={`${money(T.m3>0?T.administrativo/T.m3:0)}/m³`} color="var(--pp)" />
               <Row label="⚙️ Máquinas" value={`${money(T.m3>0?T.maquinas/T.m3:0)}/m³`} color="var(--cy)" />
               <Row label="📦 Despesas Diversas" value={`${money(T.m3>0?T.diversas/T.m3:0)}/m³`} color="var(--pp)" />
