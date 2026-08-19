@@ -27,6 +27,9 @@ export default function FinancePage({ profile, can }: Props) {
   const [editFix, setEditFix]   = useState<any>({})
   const [fStatus, setFStatus]   = useState('')
   const [search, setSearch]     = useState('')
+  const [relFrom, setRelFrom]   = useState('')
+  const [relTo, setRelTo]       = useState('')
+  const [gerando, setGerando]   = useState(false)
   const { confirm, dialog }     = useConfirm()
 
   useEffect(() => { load() }, [tab])
@@ -172,12 +175,87 @@ export default function FinancePage({ profile, can }: Props) {
     return campos.some(c => c.includes(q))
   })
 
+
+  async function gerarRelatorioFinanceiro() {
+    if (gerando) return
+    setGerando(true)
+    try {
+      const { default: jsPDF } = await import('jspdf')
+      const { default: autoTable } = await import('jspdf-autotable')
+      const money = (v:any) => 'R$ ' + Number(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})
+      const fmtD = (d:string) => d ? new Date(d+'T00:00:00').toLocaleDateString('pt-BR') : '—'
+
+      // Buscar contas do periodo (por data de pagamento/vencimento)
+      let q = supabase.from('accounts_payable').select('*').order('due_date',{ascending:true})
+      if (relFrom) q = q.gte('due_date', relFrom)
+      if (relTo)   q = q.lte('due_date', relTo)
+      const { data: contas } = await q
+      const rows = contas || []
+
+      const nomeForn = (id:string) => { const s = suppliers.find((x:any)=>x.id===id); return s ? (s.nome_razao||s.nome_fantasia) : '—' }
+      const nomeCentro = (id:string) => { const c = centers.find((x:any)=>x.id===id); return c ? `${c.codigo} - ${c.descricao}` : '—' }
+      const nomeMaquina = (id:string) => { const m = machines.find((x:any)=>x.id===id); return m ? ((m.code?m.code+' - ':'')+m.name) : null }
+
+      const doc = new jsPDF()
+      doc.setFillColor(6,13,26); doc.rect(0,0,210,24,'F')
+      doc.setTextColor(249,115,22); doc.setFontSize(15); doc.setFont('helvetica','bold')
+      doc.text('Industrial8 — Relatorio Financeiro', 12, 11)
+      doc.setTextColor(200,200,200); doc.setFontSize(9); doc.setFont('helvetica','normal')
+      const periodo = (relFrom||relTo) ? `Periodo: ${relFrom?fmtD(relFrom):'inicio'} a ${relTo?fmtD(relTo):'hoje'}` : 'Todos os lancamentos'
+      doc.text(periodo + ' | Gerado em ' + new Date().toLocaleDateString('pt-BR'), 12, 18)
+
+      // Secao 1: lista de contas
+      autoTable(doc, {
+        startY: 30,
+        head: [['Vencimento','Fornecedor','Descricao','Centro de Custo','Maquina','Valor','Status']],
+        body: rows.map((b:any)=>[
+          fmtD(b.due_date), nomeForn(b.fornecedor_id), b.descricao||'—',
+          nomeCentro(b.centro_custo_id), nomeMaquina(b.machine_id)||'—',
+          money(b.valor),
+          b.status==='paid'?'Pago':b.status==='pending'?'Pendente':b.status==='overdue'?'Vencido':b.status||'—'
+        ]),
+        foot: [['TOTAL','','','','', money(rows.reduce((s:number,b:any)=>s+(Number(b.valor)||0),0)),'']],
+        theme:'striped', styles:{fontSize:7}, headStyles:{fillColor:[30,58,110],textColor:[255,255,255]},
+        footStyles:{fillColor:[30,58,110],textColor:[255,255,255],fontStyle:'bold'},
+      })
+      let y = (doc as any).lastAutoTable.finalY + 10
+
+      // Secao 2: resumo por centro de custo
+      const porCentro:any = {}
+      rows.forEach((b:any)=>{ const k=nomeCentro(b.centro_custo_id); if(!porCentro[k]) porCentro[k]={qtd:0,val:0}; porCentro[k].qtd++; porCentro[k].val+=Number(b.valor)||0 })
+      const centroRows = Object.keys(porCentro).map(k=>[k, String(porCentro[k].qtd), money(porCentro[k].val)]).sort((a:any,b:any)=>parseFloat(b[2].replace(/[^0-9,-]/g,'').replace(',','.'))-parseFloat(a[2].replace(/[^0-9,-]/g,'').replace(',','.')))
+      if (centroRows.length>0) {
+        if (y>250){doc.addPage();y=20}
+        doc.setFont('helvetica','bold'); doc.setFontSize(11); doc.setTextColor(0,0,0)
+        doc.text('Resumo por Centro de Custo', 12, y)
+        autoTable(doc, { startY:y+3, head:[['Centro de Custo','Qtd','Total']], body:centroRows, theme:'grid', styles:{fontSize:8}, headStyles:{fillColor:[59,130,246]} })
+        y = (doc as any).lastAutoTable.finalY + 10
+      }
+
+      // Secao 3: resumo por maquina
+      const porMaquina:any = {}
+      rows.forEach((b:any)=>{ const nm=nomeMaquina(b.machine_id); if(nm){ if(!porMaquina[nm]) porMaquina[nm]={qtd:0,val:0}; porMaquina[nm].qtd++; porMaquina[nm].val+=Number(b.valor)||0 } })
+      const maqRows = Object.keys(porMaquina).map(k=>[k, String(porMaquina[k].qtd), money(porMaquina[k].val)]).sort((a:any,b:any)=>parseFloat(b[2].replace(/[^0-9,-]/g,'').replace(',','.'))-parseFloat(a[2].replace(/[^0-9,-]/g,'').replace(',','.')))
+      if (maqRows.length>0) {
+        if (y>250){doc.addPage();y=20}
+        doc.setFont('helvetica','bold'); doc.setFontSize(11); doc.setTextColor(0,0,0)
+        doc.text('Custo por Maquina', 12, y)
+        autoTable(doc, { startY:y+3, head:[['Maquina','Qtd','Total']], body:maqRows, theme:'grid', styles:{fontSize:8}, headStyles:{fillColor:[34,197,94]} })
+      }
+
+      doc.save(`financeiro_${new Date().toISOString().slice(0,10)}.pdf`)
+      toast.success('Relatorio gerado')
+    } catch (err:any) {
+      toast.error('Erro ao gerar: ' + (err?.message||err))
+    } finally { setGerando(false) }
+  }
+
   return (
     <div>
       {dialog}
       {/* Tabs */}
       <div className="flex gap-1.5 mb-3">
-        {[{k:'bills',l:'💰 Contas'},{k:'fixed',l:'🔁 Fixas'},{k:'centers',l:'📊 Centros'}].map(t=>(
+        {[{k:'bills',l:'💰 Contas'},{k:'fixed',l:'🔁 Fixas'},{k:'centers',l:'📊 Centros'},{k:'relatorios',l:'📄 Relatórios'}].map(t=>(
           <button key={t.k} onClick={()=>setTab(t.k)} className="px-3 py-1.5 rounded-xl text-xs font-semibold cursor-pointer border"
             style={{background:tab===t.k?'var(--cy)':'transparent',color:tab===t.k?'#000':'var(--t2)',borderColor:tab===t.k?'var(--cy)':'var(--bd)',fontFamily:'Sora,system-ui,sans-serif'}}>
             {t.l}
@@ -371,6 +449,17 @@ export default function FinancePage({ profile, can }: Props) {
             <Input label="Descrição *" value={editing.descricao} onChange={(v:string)=>setEdit((e:any)=>({...e,descricao:v}))} placeholder="Manutenção Geral" />
           </Modal>
         </>
+      )}
+      {tab==='relatorios' && (
+        <div className="rounded-2xl p-4" style={{background:'var(--s1)',border:'1px solid var(--bd)'}}>
+          <div style={{fontSize:'13px',fontWeight:700,color:'var(--t1)',marginBottom:'12px'}}>📄 Relatório Financeiro</div>
+          <div style={{fontSize:'11px',color:'var(--t3)',marginBottom:'12px'}}>Gera um PDF com as contas do período, resumo por centro de custo e custo por máquina.</div>
+          <div className="grid grid-cols-2 gap-3 mb-3">
+            <Input label="Data inicial" value={relFrom} onChange={(v:string)=>setRelFrom(v)} type="date" />
+            <Input label="Data final" value={relTo} onChange={(v:string)=>setRelTo(v)} type="date" />
+          </div>
+          <Btn onClick={gerarRelatorioFinanceiro} variant="primary" size="md" disabled={gerando}>{gerando?'Gerando...':'📄 Gerar Relatório PDF'}</Btn>
+        </div>
       )}
     </div>
   )
