@@ -14,7 +14,7 @@
     "@supabase/supabase-js": "2.49.0",
     "lucide-react": "0.383.0",
     "date-fns": "3.6.0",
-    "jspdf": "3.0.5",
+    "jspdf": "3.0.4",
     "jspdf-autotable": "5.0.8",
     "react-hot-toast": "2.4.1",
     "clsx": "2.1.1",
