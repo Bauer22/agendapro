@@ -2,16 +2,20 @@
   "name": "industrial8",
   "version": "1.0.0",
   "private": true,
-  "scripts": { "dev": "next dev", "build": "next build", "start": "next start" },
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start"
+  },
   "dependencies": {
-    "next": "14.2.0",
+    "next": "14.2.35",
     "react": "18.2.0",
     "react-dom": "18.2.0",
     "@supabase/supabase-js": "2.49.0",
     "lucide-react": "0.383.0",
     "date-fns": "3.6.0",
-    "jspdf": "2.5.1",
-    "jspdf-autotable": "3.8.2",
+    "jspdf": "3.0.5",
+    "jspdf-autotable": "5.0.8",
     "react-hot-toast": "2.4.1",
     "clsx": "2.1.1",
     "tailwind-merge": "2.3.0"
