@@ -202,7 +202,8 @@ export default function WoodPage({ profile, can }: Props) {
 
   function imprimirEntrada(e: any) {
     const fmtBR = (v:any,d=2) => Number(v||0).toLocaleString('pt-BR',{minimumFractionDigits:d,maximumFractionDigits:d})
-    const linha = (l:string,v:string) => `<tr><td style="padding:6px 10px;color:#555;border-bottom:1px solid #ddd">${l}</td><td style="padding:6px 10px;text-align:right;font-weight:bold;border-bottom:1px solid #ddd">${v}</td></tr>`
+    const esc = (s:any) => String(s==null?'':s).replace(/[&<>"']/g, (c:string)=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]||c))
+    const linha = (l:string,v:string) => `<tr><td style="padding:6px 10px;color:#555;border-bottom:1px solid #ddd">${esc(l)}</td><td style="padding:6px 10px;text-align:right;font-weight:bold;border-bottom:1px solid #ddd">${esc(v)}</td></tr>`
     const html = `
       <html><head><title>Entrada de Madeira</title></head>
       <body style="font-family:Arial,sans-serif;max-width:600px;margin:20px auto;color:#111">

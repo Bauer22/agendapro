@@ -185,6 +185,7 @@ export default function GerencialPage({ profile, can }: Props) {
 
   function imprimirGerencial() {
     const w = window.open('', '_blank')
+    const esc = (s:any) => String(s==null?'':s).replace(/[&<>"']/g, (c:string)=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]||c))
     if (!w) { toast.error('Permita pop-ups para imprimir'); return }
     const periodoTxt = meses.length === 1 ? `Mês: ${meses[0]}`
       : meses.length > 1 ? `${meses[0]} a ${meses[meses.length-1]}` : 'Todos os períodos'
@@ -212,7 +213,7 @@ export default function GerencialPage({ profile, can }: Props) {
       <table>
         <thead><tr><th>Parceiro</th><th class="r">Compras</th><th class="r">Vendas</th><th class="r">Recebido</th><th class="r">Pago</th><th class="r">Saldo</th></tr></thead>
         <tbody>${contaAgg.map((c:any)=>`
-          <tr><td>${c.parceiro}</td>
+          <tr><td>${esc(c.parceiro)}</td>
             <td class="r">${c.compras.toLocaleString('pt-BR',{minimumFractionDigits:2})}</td>
             <td class="r">${c.vendas.toLocaleString('pt-BR',{minimumFractionDigits:2})}</td>
             <td class="r">${c.recebido.toLocaleString('pt-BR',{minimumFractionDigits:2})}</td>

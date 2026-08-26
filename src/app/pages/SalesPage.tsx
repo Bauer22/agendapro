@@ -98,9 +98,10 @@ export default function SalesPage({ profile, can }: Props) {
   function imprimirAutorizacao(a: any) {
     const w = window.open('', '_blank')
     if (!w) { toast.error('Permita pop-ups para imprimir'); return }
+    const esc = (s:any) => String(s==null?'':s).replace(/[&<>"']/g, (c:string)=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]||c))
     const fmtQtd = a.quantity ? `${(+a.quantity).toLocaleString('pt-BR',{minimumFractionDigits:2})} ${a.unit === 'm3' ? 'm³' : 't'}` : '_______________'
     w.document.write(`
-<!DOCTYPE html><html><head><meta charset="utf-8"><title>Autorização de Carregamento Nº ${a.numero || ''}</title>
+<!DOCTYPE html><html><head><meta charset="utf-8"><title>Autorização de Carregamento Nº ${esc(a.numero || '')}</title>
 <style>
   @page { size: A4; margin: 18mm; }
   * { box-sizing: border-box; }
@@ -119,35 +120,35 @@ export default function SalesPage({ profile, can }: Props) {
 </style></head><body>
   <h1>AUTORIZAÇÃO DE CARREGAMENTO</h1>
   <div class="sub">Documento de liberação para saída de produto</div>
-  <div class="num">Nº ${a.numero || '—'}</div>
+  <div class="num">Nº ${esc(a.numero || '—')}</div>
 
   <table>
     <tr><td class="lbl">DATA DO CARREGAMENTO</td><td>${a.auth_date ? new Date(a.auth_date+'T00:00:00').toLocaleDateString('pt-BR') : '—'}</td></tr>
     <tr><td class="lbl">HORA PREVISTA</td><td>${a.auth_time || '—'}</td></tr>
-    <tr><td class="lbl">CLIENTE</td><td>${a.client_name || '—'}</td></tr>
-    <tr><td class="lbl">PRODUTO A SER CARREGADO</td><td>${a.product_name || '—'}</td></tr>
+    <tr><td class="lbl">CLIENTE</td><td>${esc(a.client_name || '—')}</td></tr>
+    <tr><td class="lbl">PRODUTO A SER CARREGADO</td><td>${esc(a.product_name || '—')}</td></tr>
     <tr><td class="lbl">QUANTIDADE</td><td>${fmtQtd}</td></tr>
-    <tr><td class="lbl">MOTORISTA</td><td>${a.driver_name || '—'}</td></tr>
-    <tr><td class="lbl">PLACA</td><td>${a.plate || '—'}</td></tr>
-    ${a.notes ? `<tr><td class="lbl">OBSERVAÇÕES</td><td>${a.notes}</td></tr>` : ''}
+    <tr><td class="lbl">MOTORISTA</td><td>${esc(a.driver_name || '—')}</td></tr>
+    <tr><td class="lbl">PLACA</td><td>${esc(a.plate || '—')}</td></tr>
+    ${a.notes ? `<tr><td class="lbl">OBSERVAÇÕES</td><td>${esc(a.notes)}</td></tr>` : ''}
   </table>
 
   <div class="assinaturas">
     <div class="linha-ass">
       <div class="linha"></div>
-      <div class="nome"><b>MOTORISTA:</b> ${a.driver_name || '_________________________'}</div>
+      <div class="nome"><b>MOTORISTA:</b> ${esc(a.driver_name || '_________________________')}</div>
     </div>
     <div class="linha-ass">
       <div class="linha"></div>
-      <div class="nome"><b>OPERADOR:</b> ${a.operator_name || '_________________________'}</div>
+      <div class="nome"><b>OPERADOR:</b> ${esc(a.operator_name || '_________________________')}</div>
     </div>
     <div class="linha-ass">
       <div class="linha"></div>
-      <div class="nome"><b>RESPONSÁVEL PELA LIBERAÇÃO:</b> ${a.released_by || '_________________________'}</div>
+      <div class="nome"><b>RESPONSÁVEL PELA LIBERAÇÃO:</b> ${esc(a.released_by || '_________________________')}</div>
     </div>
   </div>
 
-  <div class="obs">Emitido em ${new Date(a.created_at || Date.now()).toLocaleString('pt-BR')} por ${a.created_by || a.released_by || '—'}</div>
+  <div class="obs">Emitido em ${new Date(a.created_at || Date.now()).toLocaleString('pt-BR')} por ${esc(a.created_by || a.released_by || '—')}</div>
   <script>window.onload = function(){ window.print(); }</script>
 </body></html>`)
     w.document.close()
@@ -155,19 +156,20 @@ export default function SalesPage({ profile, can }: Props) {
 
   function imprimirExtrato() {
     const w = window.open('', '_blank')
+    const esc = (s:any) => String(s==null?'':s).replace(/[&<>"']/g, (c:string)=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]||c))
     if (!w) { toast.error('Permita pop-ups para imprimir'); return }
     const linhas = saldos.map((s:any) => {
       const L = lancs.filter((l:any) => l.parceiro === s.parceiro)
       const detalhe = L.map((l:any) => `
         <tr>
           <td>${l.data ? new Date(l.data+'T00:00:00').toLocaleDateString('pt-BR') : '—'}</td>
-          <td>${l.tipo || '—'}</td>
-          <td>${l.descricao || '—'}</td>
+          <td>${esc(l.tipo || '—')}</td>
+          <td>${esc(l.descricao || '—')}</td>
           <td style="text-align:right">${+l.credito !== 0 ? (+l.credito).toLocaleString('pt-BR',{minimumFractionDigits:2}) : '—'}</td>
           <td style="text-align:right">${+l.debito !== 0 ? (+l.debito).toLocaleString('pt-BR',{minimumFractionDigits:2}) : '—'}</td>
         </tr>`).join('')
       return `
-        <h2>${s.parceiro} — SALDO: R$ ${(+s.saldo_final).toLocaleString('pt-BR',{minimumFractionDigits:2})} (${s.situacao})</h2>
+        <h2>${esc(s.parceiro)} — SALDO: R$ ${(+s.saldo_final).toLocaleString('pt-BR',{minimumFractionDigits:2})} (${esc(s.situacao)})</h2>
         <table>
           <thead><tr><th>Data</th><th>Tipo</th><th>Descrição</th><th style="text-align:right">Crédito</th><th style="text-align:right">Débito</th></tr></thead>
           <tbody>${detalhe || '<tr><td colspan="5">Sem lançamentos</td></tr>'}</tbody>
