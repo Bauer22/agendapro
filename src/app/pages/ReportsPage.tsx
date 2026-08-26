@@ -325,8 +325,14 @@ export default function ReportsPage({ profile, can }: Props) {
         doc.text(`Compras (${compras.length})`, 12, y)
         autoTable(doc, {
           startY: y+3,
-          head: [['Data','Peso (t)','Valor']],
-          body: compras.map((c:any)=>[fmtD(c.purchase_date||c.data_entrada), `${c.weight_tons||0}`, `R$ ${fmtR(c.total_value||0)}`]),
+          head: [['Data','Peso (t)','Motorista','Hora Descarga','Valor']],
+          body: compras.map((c:any)=>[
+            fmtD(c.purchase_date||c.data_entrada),
+            `${c.weight_tons||0}`,
+            c.driver||'—',
+            c.unload_time ? String(c.unload_time).slice(0,5) : '—',
+            `R$ ${fmtR(c.total_value||0)}`
+          ]),
           styles: { fontSize:7, cellPadding:2 },
           headStyles: { fillColor:[6,13,26], textColor:[255,255,255] },
           alternateRowStyles: { fillColor:[241,245,249] },
