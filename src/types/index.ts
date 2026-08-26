@@ -17,6 +17,7 @@ export interface Machine {
   location?: string; icon?: string; current_hours?: number;
   oil_interval?: number; last_oil_hours?: number; last_oil_date?: string;
   pm_plan?: any[]; components?: any[]; created_at?: string;
+  year?: string | number; serial?: string; notes?: string;
 }
 export interface Part {
   id: string; company_id: string; code: string; name: string;
@@ -29,3 +30,8 @@ export interface MaintenanceRecord {
   parts?: string; description?: string; result?: string;
   status?: string; close_date?: string; created_by?: string; created_at?: string;
 }
+
+// Aliases de compatibilidade (tipos usados no código)
+export type Maintenance = MaintenanceRecord & { [key: string]: any }
+export interface Supplier { id: string; company_id?: string; name: string; [key: string]: any }
+export interface Task { id: string; company_id?: string; [key: string]: any }

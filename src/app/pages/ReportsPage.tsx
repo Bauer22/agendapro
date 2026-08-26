@@ -119,7 +119,7 @@ export default function ReportsPage({ profile, can }: Props) {
       // addTable: título + tabela padrão + salvar PDF (usada pelos módulos simples,
       // de uma tabela só). Faltava esta definição — os 7 módulos que a chamavam
       // (oee, wood, sales, epi, training, audit, energy) davam erro ao gerar.
-      function addTable(doc: any, title: string, head: string[], rows: any[][]) {
+      const addTable = (doc: any, title: string, head: string[], rows: any[][]) => {
         doc.setTextColor(20,20,20); doc.setFontSize(12); doc.setFont('helvetica','bold')
         doc.text(`${title} (${rows.length})`, 12, startY)
         autoTable(doc, {
@@ -406,7 +406,7 @@ export default function ReportsPage({ profile, can }: Props) {
         // chave = "motorista||tipo" — tipo é "MADEIRA {fornecedor}" para compras
         // ou o nome do produto para vendas (ex: LAMINA, ROLETE)
         const viagens: Record<string,{motorista:string,tipo:string,qtd:number,peso:number}> = {}
-        function addViagem(mot: string, tipo: string, peso: number) {
+        const addViagem = (mot: string, tipo: string, peso: number) => {
           const key = `${mot}||${tipo}`
           if (!viagens[key]) viagens[key] = {motorista:mot, tipo, qtd:0, peso:0}
           viagens[key].qtd += 1

@@ -16,6 +16,7 @@ export default function TasksPage({ profile, can }: Props) {
   const [users, setUsers]   = useState<any[]>([])
   const [date, setDate]     = useState(td())
   const [modal, setModal]   = useState(false)
+  const [saving, setSaving] = useState(false)
   const [editing, setEdit]  = useState<Partial<Task>>({})
   const [fPrio, setFPrio]   = useState('')
   const { confirm, dialog } = useConfirm()

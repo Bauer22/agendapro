@@ -2,6 +2,10 @@ export const fmtD = (d?: string) => {
   if (!d) return '—'
   try { const [y,m,day] = d.split('T')[0].split('-'); return `${day}/${m}/${y}` } catch { return d }
 }
+export const fmtDT = (d?: string) => {
+  if (!d) return '—'
+  try { const dt = new Date(d); const hh=String(dt.getHours()).padStart(2,'0'); const mm=String(dt.getMinutes()).padStart(2,'0'); return `${fmtD(d)} ${hh}:${mm}` } catch { return fmtD(d) }
+}
 export const td = () => new Date().toISOString().split('T')[0]
 
 export const STATUS_INFO: Record<string, {label:string; color:string}> = {
@@ -20,12 +24,12 @@ export const PERIOD_LABEL: Record<string,string> = {
   daily:'Diário', weekly:'Semanal', biweekly:'Quinzenal',
   monthly:'Mensal', quarterly:'Trimestral', semiannual:'Semestral', annual:'Anual'
 }
-export const ROLES: Record<string,{perms:string[]}> = {
-  superadmin: { perms:['all'] },
-  admin:      { perms:['all'] },
-  supervisor: { perms:['os','maint','pm','tasks','parts','reports','machines'] },
-  operator:   { perms:['os','maint','pm','tasks'] },
-  viewer:     { perms:['reports'] },
+export const ROLES: Record<string,{label:string,perms:string[]}> = {
+  superadmin: { label:'Super Admin',   perms:['all'] },
+  admin:      { label:'Administrador',  perms:['all'] },
+  supervisor: { label:'Supervisor',     perms:['os','maint','pm','tasks','parts','reports','machines'] },
+  operator:   { label:'Operador',       perms:['os','maint','pm','tasks'] },
+  viewer:     { label:'Consulta',       perms:['reports'] },
 }
 export const DPT = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb']
 export const MPT = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez']

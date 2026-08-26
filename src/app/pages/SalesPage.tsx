@@ -466,7 +466,7 @@ export default function SalesPage({ profile, can }: Props) {
           o.total_value?money(o.total_value):'—', o.payment_status==='pago'?'Pago':o.payment_status==='pendente'?'Pend.':'—']),
         theme:'striped', headStyles:{fillColor:[30,58,110]}, styles:{fontSize:7},
       })
-      y = (doc).lastAutoTable.finalY + 8; var motMap = {}; rep.forEach(function(o){ var k = o.driver || 'Nao informado'; if(!motMap[k]) motMap[k]={cargas:0,tons:0,m3:0}; motMap[k].cargas++; motMap[k].tons += parseFloat(o.weight_tons)||0; motMap[k].m3 += parseFloat(o.volume_m3)||0; }); var motRows = Object.keys(motMap).map(function(k){ var d=motMap[k]; return [k, String(d.cargas), d.tons.toFixed(3), d.m3.toFixed(2), (d.cargas>0?(d.tons/d.cargas):0).toFixed(2)]; }).sort(function(a,b){return parseFloat(b[2])-parseFloat(a[2]);}); if(motRows.length>0){ autoTable(doc, { startY: y, head: [['Motorista','Viagens','Toneladas','m3','Media t/viagem']], body: motRows, theme:'grid', headStyles:{fillColor:[34,197,94]}, styles:{fontSize:8} }); }
+      y = (doc as any).lastAutoTable.finalY + 8; var motMap = {}; rep.forEach(function(o){ var k = o.driver || 'Nao informado'; if(!motMap[k]) motMap[k]={cargas:0,tons:0,m3:0}; motMap[k].cargas++; motMap[k].tons += parseFloat(o.weight_tons)||0; motMap[k].m3 += parseFloat(o.volume_m3)||0; }); var motRows = Object.keys(motMap).map(function(k){ var d=motMap[k]; return [k, String(d.cargas), d.tons.toFixed(3), d.m3.toFixed(2), (d.cargas>0?(d.tons/d.cargas):0).toFixed(2)]; }).sort(function(a,b){return parseFloat(b[2])-parseFloat(a[2]);}); if(motRows.length>0){ autoTable(doc, { startY: y, head: [['Motorista','Viagens','Toneladas','m3','Media t/viagem']], body: motRows, theme:'grid', headStyles:{fillColor:[34,197,94]}, styles:{fontSize:8} }); }
       // -- Conta Corrente: recebimentos do periodo + saldo real --
       var nomeCliVen = rCli ? (clients.find(function(x){return x.id===rCli;})||{}).name : null;
       var qRecVen = supabase.from('client_payments').select('*').order('payment_date',{ascending:false});
@@ -481,15 +481,15 @@ export default function SalesPage({ profile, can }: Props) {
         return [ p.payment_date ? new Date(p.payment_date+'T00:00:00').toLocaleDateString('pt-BR') : '-', p.client_name || '-', p.method || '-', money(Number(p.value)||0) ];
       });
       if (recebRowsVen.length > 0) {
-        y = (doc).lastAutoTable ? (doc).lastAutoTable.finalY + 8 : y + 8;
+        y = (doc as any).lastAutoTable ? (doc as any).lastAutoTable.finalY + 8 : y + 8;
         doc.setFontSize(11); doc.setTextColor(0,0,0); doc.setFont('helvetica','bold');
         doc.text('Recebimentos do Periodo', 12, y);
         autoTable(doc, { startY: y + 3, head: [['Data','Cliente','Forma','Valor']], body: recebRowsVen, theme:'striped', headStyles:{fillColor:[16,185,129]}, bodyStyles:{textColor:[20,20,20]}, styles:{fontSize:8} });
-        y = (doc).lastAutoTable.finalY + 8;
+        y = (doc as any).lastAutoTable.finalY + 8;
       }
       var totalRecVen = (rRecVen && rRecVen.data ? rRecVen.data : []).reduce(function(s,p){return s + (Number(p.value)||0);}, 0);
       var saldoVen = (rSaldoVen && rSaldoVen.data && rSaldoVen.data.length > 0) ? rSaldoVen.data : [];
-      y = (doc).lastAutoTable ? (doc).lastAutoTable.finalY + 8 : y + 8;
+      y = (doc as any).lastAutoTable ? (doc as any).lastAutoTable.finalY + 8 : y + 8;
       if (y > 250) { doc.addPage(); y = 20; }
       doc.setFontSize(11); doc.setTextColor(0,0,0); doc.setFont('helvetica','bold');
       doc.text('Resumo de Conta Corrente', 12, y);

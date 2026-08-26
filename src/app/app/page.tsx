@@ -253,7 +253,7 @@ export default function App() {
 
   const NAV = ALL_NAV.filter(n => {
     if (profile?.role === 'superadmin') return true
-    if (n.id === 'superadmin' && profile?.role !== 'superadmin') return false
+    if (n.id === 'superadmin') return false
     // Enforcement por empresa: se a empresa tem módulos configurados,
     // o módulo precisa estar liberado (superadmin ignora essa regra).
     if (companyModules !== null && !companyModules.includes(n.id) && n.id !== 'dashboard') return false
