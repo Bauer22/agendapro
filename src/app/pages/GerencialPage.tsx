@@ -211,11 +211,14 @@ export default function GerencialPage({ profile, can }: Props) {
     const secConta = `
       <h2>CONTA CORRENTE</h2>
       <table>
-        <thead><tr><th>Parceiro</th><th class="r">Compras</th><th class="r">Vendas</th><th class="r">Recebido</th><th class="r">Pago</th><th class="r">Saldo</th></tr></thead>
+        <thead><tr><th>Parceiro</th><th class="r">Compras</th><th class="r">Ton Comp.</th><th class="r">R$/t Médio</th><th class="r">Vendas</th><th class="r">Ton Vend.</th><th class="r">Recebido</th><th class="r">Pago</th><th class="r">Saldo</th></tr></thead>
         <tbody>${contaAgg.map((c:any)=>`
           <tr><td>${esc(c.parceiro)}</td>
             <td class="r">${c.compras.toLocaleString('pt-BR',{minimumFractionDigits:2})}</td>
+            <td class="r">${(c.tonC||0).toLocaleString('pt-BR',{minimumFractionDigits:2})}</td>
+            <td class="r">${(c.tonC>0?c.compras/c.tonC:0).toLocaleString('pt-BR',{minimumFractionDigits:2})}</td>
             <td class="r">${c.vendas.toLocaleString('pt-BR',{minimumFractionDigits:2})}</td>
+            <td class="r">${(c.tonV||0).toLocaleString('pt-BR',{minimumFractionDigits:2})}</td>
             <td class="r">${c.recebido.toLocaleString('pt-BR',{minimumFractionDigits:2})}</td>
             <td class="r">${c.pago.toLocaleString('pt-BR',{minimumFractionDigits:2})}</td>
             <td class="r"><b>${c.saldo.toLocaleString('pt-BR',{minimumFractionDigits:2})}</b></td></tr>`).join('')}</tbody>
@@ -491,7 +494,10 @@ export default function GerencialPage({ profile, can }: Props) {
                       </Badge>
                     </div>
                     <Row label="🪵 Compras de madeira" value={money(c.compras)} color="var(--rd)" />
+                    {c.tonC>0 && <Row label="⚖️ Ton compradas" value={`${c.tonC.toLocaleString('pt-BR',{minimumFractionDigits:2})} t`} color="var(--t3)" />}
+                    {c.tonC>0 && <Row label="📊 Custo médio" value={`${money(c.compras/c.tonC)}/t`} color="var(--am)" />}
                     <Row label="🛒 Vendas" value={money(c.vendas)} color="var(--gn)" />
+                    {c.tonV>0 && <Row label="⚖️ Ton vendidas" value={`${c.tonV.toLocaleString('pt-BR',{minimumFractionDigits:2})} t`} color="var(--t3)" />}
                     {c.credito>0 && <Row label="➕ Créditos (fretes/saldo ant.)" value={money(c.credito)} color="var(--gn)" />}
                     {c.debito>0 && <Row label="➖ Débitos (pesagens/outros)" value={money(c.debito)} color="var(--rd)" />}
                     {c.recebido>0 && <Row label="💵 Recebido" value={`− ${money(c.recebido)}`} color="var(--t3)" />}
