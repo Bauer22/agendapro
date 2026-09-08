@@ -309,8 +309,11 @@ export default function ReportsPage({ profile, can }: Props) {
         let qRecebido = supabase.from('client_payments').select('*').ilike('client_name', parceiroNome).order('payment_date',{ascending:false})
         if (dateFrom) qRecebido = qRecebido.gte('payment_date', dateFrom)
         if (dateTo)   qRecebido = qRecebido.lte('payment_date', dateTo)
+        let qPago = supabase.from('supplier_payments').select('*').ilike('supplier_name', parceiroNome).order('payment_date',{ascending:false})
+        if (dateFrom) qPago = qPago.gte('payment_date', dateFrom)
+        if (dateTo)   qPago = qPago.lte('payment_date', dateTo)
 
-        const [rCompras, rWood, rVendas, rSaldo, rRecebido] = await Promise.all([qCompras, qWood, qVendas, qSaldo, qRecebido])
+        const [rCompras, rWood, rVendas, rSaldo, rRecebido, rPago] = await Promise.all([qCompras, qWood, qVendas, qSaldo, qRecebido, qPago])
         // compras: usa tiquete se existir, senão wood_entries (mesma regra da conta corrente)
         const compras = (rCompras.data && rCompras.data.length > 0) ? rCompras.data : (rWood.data||[])
         const vendas  = rVendas.data || []
@@ -394,6 +397,29 @@ export default function ReportsPage({ profile, can }: Props) {
             styles: { fontSize:7, cellPadding:2 },
             headStyles: { fillColor:[16,185,129], textColor:[255,255,255] },
             footStyles: { fillColor:[16,185,129], textColor:[255,255,255], fontStyle:'bold' },
+            alternateRowStyles: { fillColor:[241,245,249] },
+          })
+          y = (doc as any).lastAutoTable.finalY + 10
+        }
+
+        // ── Seção: Pagamentos Efetuados no período (a fornecedores) ──
+        const pagos = rPago.data || []
+        if (pagos.length > 0) {
+          if (y > 240) { doc.addPage(); y = 20 }
+          doc.setFont('helvetica','bold'); doc.setFontSize(11); doc.setTextColor(220,80,80)
+          doc.text(`Pagamentos Efetuados (${pagos.length})`, 12, y)
+          autoTable(doc, {
+            startY: y + 3,
+            head: [['Data','Forma','Valor']],
+            body: pagos.map((p:any)=>[
+              p.payment_date ? new Date(p.payment_date+'T00:00:00').toLocaleDateString('pt-BR') : '-',
+              p.method || '-',
+              'R$ ' + (Number(p.value)||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})
+            ]),
+            foot: [['TOTAL','','R$ ' + pagos.reduce((s:number,p:any)=>s+(Number(p.value)||0),0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})]],
+            styles: { fontSize:7, cellPadding:2 },
+            headStyles: { fillColor:[220,80,80], textColor:[255,255,255] },
+            footStyles: { fillColor:[220,80,80], textColor:[255,255,255], fontStyle:'bold' },
             alternateRowStyles: { fillColor:[241,245,249] },
           })
           y = (doc as any).lastAutoTable.finalY + 10
