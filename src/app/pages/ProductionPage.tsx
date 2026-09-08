@@ -90,14 +90,25 @@ export default function ProductionPage({ profile, can }: Props) {
       ? await supabase.from('production_records').update({...obj, updated_by: profile?.display_name, updated_at: new Date().toISOString()}).eq('id',editing.id)
       : await supabase.from('production_records').insert({...obj, company_id: profile?.company_id||null})
     if (error) { toast.error('Erro: '+error.message); setSaving(false); return }
+    // Recalcula o estoque de madeira do mês da produção (mantém o custo de matéria-prima atualizado)
+    try {
+      const mesProd = (obj.prod_date||'').slice(0,7)
+      if (mesProd) await supabase.rpc('fn_fechar_estoque_madeira', { p_mes: mesProd })
+    } catch (e) { /* silencioso */ }
     toast.success(editing.id?'Atualizado ✅':'Produção registrada ✅')
     setSaving(false); setModal(false); load()
   }
 
   async function del(id:string) {
     if (!await confirm('Excluir este lançamento?')) return
+    // Guarda o mês do registro antes de excluir, para recalcular o estoque depois
+    const reg = records.find((r:any)=>r.id===id)
+    const mesProd = reg?.prod_date ? String(reg.prod_date).slice(0,7) : null
     const { error } = await supabase.from('production_records').delete().eq('id',id)
     if (error) { toast.error('Erro: '+error.message); return }
+    try {
+      if (mesProd) await supabase.rpc('fn_fechar_estoque_madeira', { p_mes: mesProd })
+    } catch (e) { /* silencioso */ }
     toast.success('Excluído'); load()
   }
 
