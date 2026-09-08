@@ -10,7 +10,7 @@ interface Props { profile: UserProfile|null; can:(p:string)=>boolean }
 type Tab = 'lancamentos'|'relatorio'
 
 const WOOD_CLASSES = ['12 a 18','18 a 24','24 a 35']
-const CONV = 1.4  // m³ ÷ 1,4 = toneladas
+const CONV_DEFAULT = 1.4  // fallback: m³ ÷ 1,4 = toneladas (parâmetro conv_tanque_tons da system_config)
 const money = (v:number) => `R$ ${(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}`
 
 export default function ProductionPage({ profile, can }: Props) {
@@ -23,6 +23,7 @@ export default function ProductionPage({ profile, can }: Props) {
   const [buscaProd, setBuscaProd] = useState('')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [CONV, setCONV] = useState(CONV_DEFAULT)  // carregado da system_config
   const [rFrom, setRFrom] = useState(''); const [rTo, setRTo] = useState('')
   const [rClass, setRClass] = useState('')
   const { confirm, dialog } = useConfirm()
@@ -31,10 +32,12 @@ export default function ProductionPage({ profile, can }: Props) {
 
   async function load() {
     setLoading(true)
-    const [p, w] = await Promise.all([
+    const [p, w, cfg] = await Promise.all([
       supabase.from('production_records').select('*').order('prod_date',{ascending:false}).order('created_at',{ascending:false}).limit(300),
       supabase.from('wood_entries').select('data_entrada,weight_tons,peso_liquido,total_value,unit_value,volume_m3').limit(1000),
+      supabase.from('system_config').select('valor').eq('chave','conv_tanque_tons').maybeSingle(),
     ])
+    if (cfg?.data?.valor && +cfg.data.valor > 0) setCONV(+cfg.data.valor)
     if (p.error) toast.error('Erro: '+p.error.message)
     setRecords(p.data||[])
     setWoodEntries(w.data||[])

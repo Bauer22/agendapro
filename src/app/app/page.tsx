@@ -44,6 +44,7 @@ import SuppPage    from '@/app/pages/SuppPage'
 import ReportsPage from '@/app/pages/ReportsPage'
 import UsersPage   from '@/app/pages/UsersPage'
 import SettPage    from '@/app/pages/SettPage'
+import ConfigPage  from '@/app/pages/ConfigPage'
 import LoginPage   from '@/app/pages/LoginPage'
 import FinancePage    from '@/app/pages/FinancePage'
 import QRPage         from '@/app/pages/QRPage'
@@ -64,7 +65,7 @@ import ProductionPage  from '@/app/pages/ProductionPage'
 import GerencialPage   from '@/app/pages/GerencialPage'
 import SalesPage       from '@/app/pages/SalesPage'
 
-type Page = 'dashboard'|'os'|'machines'|'pm'|'tasks'|'parts'|'suppliers'|'cadastros'|'fuel'|'production'|'gerencial'|'reports'|'users'|'settings'|'finance'|'qr'|'downtime'|'superadmin'|'chat'|'scheduling'|'documents'|'epi'|'oee'|'training'|'audit'|'energy'|'wood'|'sales'
+type Page = 'dashboard'|'os'|'machines'|'pm'|'tasks'|'parts'|'suppliers'|'cadastros'|'fuel'|'production'|'gerencial'|'reports'|'users'|'settings'|'finance'|'qr'|'downtime'|'superadmin'|'chat'|'scheduling'|'documents'|'epi'|'oee'|'training'|'audit'|'energy'|'wood'|'sales'|'config'
 
 
 export default function App() {
@@ -249,11 +250,12 @@ export default function App() {
     {id:'users' as Page,      label:'Usuários',    icon:IC.users},
     {id:'superadmin' as Page, label:'Super Admin', icon:IC.sadm},
     {id:'settings' as Page,   label:'Config',      icon:IC.cfg},
+    {id:'config' as Page,     label:'⚙️ Parâmetros', icon:IC.cfg},
   ]
 
   const NAV = ALL_NAV.filter(n => {
     if (profile?.role === 'superadmin') return true
-    if (n.id === 'superadmin') return false
+    if (n.id === 'superadmin' || n.id === 'config') return false  // só superadmin (tratado acima)
     // Enforcement por empresa: se a empresa tem módulos configurados,
     // o módulo precisa estar liberado (superadmin ignora essa regra).
     if (companyModules !== null && !companyModules.includes(n.id) && n.id !== 'dashboard') return false
@@ -273,6 +275,7 @@ export default function App() {
     reports:     <ReportsPage profile={profile} can={can} />,
     users:       <UsersPage   profile={profile} can={can} />,
     settings:    <SettPage      profile={profile} onSave={p => setProfile(p)} />,
+    config:      <ConfigPage    profile={profile} />,
     qr:          <QRPage        profile={profile} can={can} onNavigate={setPage} />,
     downtime:    <DowntimePage  profile={profile} can={can} />,
     chat:        <ChatPage      profile={profile} />,
