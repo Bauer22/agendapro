@@ -40,7 +40,7 @@ export default function FinancePage({ profile, can }: Props) {
   async function load() {
     if (tab === 'bills') {
       const [b, c, s, m] = await Promise.all([
-        supabase.from('accounts_payable').select('*').order('due_date',{ascending:false}),
+        supabase.from('accounts_payable').select('*').order('created_at',{ascending:false}),
         supabase.from('cost_centers').select('*').eq('active', true),
         supabase.from('cadastros').select('id,nome_razao,nome_fantasia').eq('is_fornecedor',true).eq('status',true),
         supabase.from('machines').select('id,code,name').order('name'),
